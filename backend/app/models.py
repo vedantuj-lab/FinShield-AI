@@ -746,3 +746,168 @@ Investigation.rescue_case = relationship("RescueCase", back_populates="investiga
 
 # Add back reference for Evidence case relationship
 Evidence.case = relationship("RescueCase", back_populates="evidence", foreign_keys=[Evidence.case_id])
+
+
+# ==================== PHASE 7: SMALL BUSINESS FINANCE ====================
+
+class GSTInvoice(Base):
+    __tablename__ = "gst_invoices"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    business_profile_id = Column(String, ForeignKey("business_profiles.id"), nullable=False)
+    
+    # Invoice details
+    invoice_number = Column(String, nullable=False, unique=True)
+    invoice_date = Column(DateTime, nullable=False)
+    due_date = Column(DateTime, nullable=True)
+    
+    # Customer/Supplier details
+    customer_name = Column(String, nullable=False)
+    customer_gstin = Column(String, nullable=True)
+    customer_address = Column(String, nullable=True)
+    customer_phone = Column(String, nullable=True)
+    customer_email = Column(String, nullable=True)
+    
+    # Invoice items
+    items = Column(Text, nullable=False)  # JSON array of items with HSN, description, qty, rate, tax rate
+    
+    # Amounts
+    subtotal = Column(Float, nullable=False)
+    sgst_amount = Column(Float, default=0)  # State GST
+    cgst_amount = Column(Float, default=0)  # Central GST
+    igst_amount = Column(Float, default=0)  # Integrated GST
+    gst_rate = Column(Float, nullable=False)  # 5%, 12%, 18%, 28%
+    total_amount = Column(Float, nullable=False)
+    
+    # Payment
+    payment_status = Column(String, default="pending")  # pending, partial, paid
+    payment_date = Column(DateTime, nullable=True)
+    amount_paid = Column(Float, default=0)
+    
+    # Status & notes
+    status = Column(String, default="draft")  # draft, issued, paid, cancelled
+    notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="gst_invoices")
+
+
+class IncomeExpense(Base):
+    __tablename__ = "income_expenses"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    business_profile_id = Column(String, ForeignKey("business_profiles.id"), nullable=False)
+    
+    # Transaction details
+    transaction_date = Column(DateTime, nullable=False)
+    amount = Column(Float, nullable=False)
+    
+    # Classification
+    transaction_type = Column(String, nullable=False)  # income, expense
+    category = Column(String, nullable=False)  # Sales, Salaries, Rent, Utilities, etc
+    subcategory = Column(String, nullable=True)
+    
+    # Details
+    description = Column(String, nullable=False)
+    reference_number = Column(String, nullable=True)  # Invoice/Receipt number
+    
+    # Payment method
+    payment_method = Column(String, nullable=True)  # Cash, Check, Bank Transfer, Card
+    
+    # Tax-related
+    includes_gst = Column(Boolean, default=False)
+    gst_amount = Column(Float, default=0)
+    gst_rate = Column(Float, nullable=True)
+    
+    # Reconciliation
+    reconciled = Column(Boolean, default=False)
+    reconciled_date = Column(DateTime, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="income_expenses")
+
+
+class CashFlowForecast(Base):
+    __tablename__ = "cash_flow_forecasts"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    business_profile_id = Column(String, ForeignKey("business_profiles.id"), nullable=False)
+    
+    # Forecast metadata
+    forecast_date = Column(DateTime, default=datetime.utcnow)
+    start_month = Column(String, nullable=False)  # YYYY-MM
+    end_month = Column(String, nullable=False)    # YYYY-MM
+    forecast_months = Column(Integer, nullable=False)
+    
+    # Forecast data
+    forecast_data = Column(Text, nullable=False)  # JSON with monthly forecasts
+    # Structure: { "2024-11": { "opening_balance": X, "inflows": X, "outflows": X, "closing_balance": X }, ... }
+    
+    # Assumptions
+    growth_rate = Column(Float, default=0)
+    seasonality_factor = Column(Float, default=1.0)
+    assumptions = Column(Text, nullable=True)  # JSON with forecast assumptions
+    
+    # Scenarios
+    best_case = Column(Text, nullable=True)  # JSON
+    base_case = Column(Text, nullable=True)  # JSON
+    worst_case = Column(Text, nullable=True)  # JSON
+    
+    # Summary
+    total_inflows = Column(Float, default=0)
+    total_outflows = Column(Float, default=0)
+    net_cash_flow = Column(Float, default=0)
+    ending_balance = Column(Float, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="cash_flow_forecasts")
+
+
+class EMIPlan(Base):
+    __tablename__ = "emi_plans"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    business_profile_id = Column(String, ForeignKey("business_profiles.id"), nullable=False)
+    
+    # Loan details
+    loan_name = Column(String, nullable=False)
+    principal_amount = Column(Float, nullable=False)
+    annual_interest_rate = Column(Float, nullable=False)
+    tenure_months = Column(Integer, nullable=False)
+    
+    # EMI calculation
+    monthly_emi = Column(Float, nullable=False)
+    total_amount_payable = Column(Float, nullable=False)
+    total_interest = Column(Float, nullable=False)
+    
+    # Payment tracking
+    start_date = Column(DateTime, nullable=False)
+    next_emi_date = Column(DateTime, nullable=True)
+    last_payment_date = Column(DateTime, nullable=True)
+    amount_paid = Column(Float, default=0)
+    remaining_amount = Column(Float, nullable=False)
+    
+    # Schedule
+    emi_schedule = Column(Text, nullable=True)  # JSON array with payment dates and amounts
+    
+    # Status
+    status = Column(String, default="active")  # active, completed, closed
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="emi_plans")

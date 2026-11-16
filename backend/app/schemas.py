@@ -864,3 +864,146 @@ class RescueResolveResponse(BaseModel):
     total_recovered: float
     resolution_date: datetime
     closure_communication_sent: bool
+
+
+# ==================== PHASE 7: SMALL BUSINESS FINANCE SCHEMAS ====================
+
+class InvoiceItem(BaseModel):
+    description: str
+    hsn_code: Optional[str] = None
+    quantity: float
+    unit_price: float
+    tax_rate: float = 18
+
+
+class GSTInvoiceCreate(BaseModel):
+    invoice_number: str
+    invoice_date: datetime
+    due_date: Optional[datetime] = None
+    customer_name: str
+    customer_gstin: Optional[str] = None
+    customer_address: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_email: Optional[str] = None
+    items: List[InvoiceItem]
+    gst_rate: float = 18
+
+
+class GSTInvoiceResponse(BaseModel):
+    id: str
+    invoice_number: str
+    invoice_date: datetime
+    due_date: Optional[datetime] = None
+    customer_name: str
+    subtotal: float
+    sgst_amount: float
+    cgst_amount: float
+    igst_amount: float
+    total_amount: float
+    gst_rate: float
+    payment_status: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class IncomeExpenseCreate(BaseModel):
+    transaction_date: datetime
+    amount: float
+    transaction_type: str  # income, expense
+    category: str
+    subcategory: Optional[str] = None
+    description: str
+    reference_number: Optional[str] = None
+    payment_method: Optional[str] = None
+    includes_gst: bool = False
+    gst_rate: Optional[float] = None
+
+
+class IncomeExpenseResponse(IncomeExpenseCreate):
+    id: str
+    gst_amount: float
+    reconciled: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CashFlowForecastCreate(BaseModel):
+    start_month: str  # YYYY-MM
+    end_month: str    # YYYY-MM
+    growth_rate: float = 0
+    seasonality_factor: float = 1.0
+    assumptions: Optional[dict] = None
+
+
+class CashFlowForecastData(BaseModel):
+    month: str
+    opening_balance: float
+    inflows: float
+    outflows: float
+    closing_balance: float
+
+
+class CashFlowForecastResponse(BaseModel):
+    id: str
+    forecast_date: datetime
+    start_month: str
+    end_month: str
+    forecast_months: int
+    forecast_data: List[CashFlowForecastData]
+    total_inflows: float
+    total_outflows: float
+    net_cash_flow: float
+    ending_balance: float
+    best_case: Optional[dict] = None
+    base_case: Optional[dict] = None
+    worst_case: Optional[dict] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EMIPlanCreate(BaseModel):
+    loan_name: str
+    principal_amount: float
+    annual_interest_rate: float
+    tenure_months: int
+    start_date: datetime
+
+
+class EMIScheduleItem(BaseModel):
+    payment_number: int
+    due_date: datetime
+    opening_balance: float
+    emi_amount: float
+    principal_paid: float
+    interest_paid: float
+    closing_balance: float
+
+
+class EMIPlanResponse(BaseModel):
+    id: str
+    loan_name: str
+    principal_amount: float
+    annual_interest_rate: float
+    tenure_months: int
+    monthly_emi: float
+    total_amount_payable: float
+    total_interest: float
+    start_date: datetime
+    next_emi_date: Optional[datetime] = None
+    amount_paid: float
+    remaining_amount: float
+    status: str
+    emi_schedule: Optional[List[EMIScheduleItem]] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
