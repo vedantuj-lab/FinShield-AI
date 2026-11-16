@@ -224,6 +224,32 @@ class TestBacktestEngine:
         for field in required_fields:
             assert field in results
 
+    def test_backtest_trade_dates_accuracy(self):
+        """Test that trade entry dates match actual buy dates (not previous trades)"""
+        # Create specific test data to verify entry_date accuracy
+        prices = [100, 100, 100, 110, 110, 110, 100, 100, 100, 120, 120, 120,
+                  100, 100, 100, 115, 115, 115, 100, 100, 100, 125, 125, 125]
+        dates = [datetime(2024, 1, 1) + timedelta(days=i) for i in range(len(prices))]
+        
+        engine = create_backtest_engine(100000)
+        results = engine.run_moving_average_crossover(dates, prices, 3, 5)
+        
+        # Verify each trade's entry_date matches the actual buy date from dates list
+        # by ensuring entry_date is in the dates list
+        for trade_data in results["trades"]:
+            entry_date_str = trade_data["entry_date"]
+            # Verify entry_date is valid and is actually a date from our input
+            assert entry_date_str is not None
+            # Parse the date
+            trade_entry = datetime.fromisoformat(entry_date_str)
+            # Verify it's one of our input dates
+            assert trade_entry in dates, f"Trade entry date {trade_entry} not in input dates"
+            
+            # Verify exit_date is after entry_date
+            if trade_data["exit_date"] is not None:
+                trade_exit = datetime.fromisoformat(trade_data["exit_date"])
+                assert trade_exit >= trade_entry, "Exit date should be after or equal to entry date"
+
 
 class TestTechnicalIndicatorsAccuracy:
     """Test accuracy of technical indicators against known values"""

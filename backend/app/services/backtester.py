@@ -37,6 +37,7 @@ class BacktestEngine:
         self.current_cash = initial_capital
         self.shares_held = 0
         self.entry_price = 0
+        self.entry_date: Optional[datetime] = None
         self.trades: List[Trade] = []
         self.portfolio_values: List[float] = []
         self.max_portfolio_value = initial_capital
@@ -54,6 +55,7 @@ class BacktestEngine:
             self.current_cash -= cost
             self.shares_held += quantity
             self.entry_price = price
+            self.entry_date = date
             return True
         return False
     
@@ -68,7 +70,7 @@ class BacktestEngine:
             self.shares_held -= quantity
             
             if self.shares_held == 0:
-                trade = Trade(entry_date=self.trades[-1].entry_date if self.trades else date, 
+                trade = Trade(entry_date=self.entry_date if self.entry_date else date, 
                              entry_price=self.entry_price,
                              exit_date=date,
                              exit_price=price)
