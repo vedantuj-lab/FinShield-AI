@@ -310,6 +310,119 @@ class TechnicalAnalysisRequest(BaseModel):
     period: int = 14
 
 
+# Tax Schemas
+class TaxDeductionCreate(BaseModel):
+    deduction_type: str  # "80C", "80D", "HRA", "Standard"
+    category: str
+    amount: float
+    proof_url: Optional[str] = None
+    description: Optional[str] = None
+
+
+class TaxDeductionResponse(TaxDeductionCreate):
+    id: str
+    user_id: str
+    tax_profile_id: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TaxProfileCreate(BaseModel):
+    financial_year: str
+    income_type: str  # "salary", "self_employed", "mixed"
+    total_income: float
+    preferred_regime: str = "new"
+
+
+class TaxProfileResponse(BaseModel):
+    id: str
+    user_id: str
+    financial_year: str
+    income_type: str
+    total_income: float
+    total_deductions: float
+    taxable_income: float
+    preferred_regime: str
+    created_at: datetime
+    updated_at: datetime
+    deductions: List[TaxDeductionResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class TaxCalculationRequest(BaseModel):
+    financial_year: str
+    income_type: str
+    salary_income: float = 0
+    business_income: float = 0
+    other_income: float = 0
+    deductions: Optional[float] = 0
+
+
+class TaxCalculationResponse(BaseModel):
+    financial_year: str
+    total_income: float
+    standard_deduction: float
+    taxable_income: float
+    tax_liability: float
+    regime: str
+    breakup: Optional[dict] = None
+
+
+class RegimeComparisonRequest(BaseModel):
+    financial_year: str
+    total_income: float
+    deductions: float = 0
+    hra_amount: Optional[float] = 0
+
+
+class RegimeComparisonResponse(BaseModel):
+    financial_year: str
+    total_income: float
+    old_regime_tax: float
+    new_regime_tax: float
+    difference: float
+    recommended_regime: str
+    explanation: str
+
+
+class DeductionSuggestionRequest(BaseModel):
+    financial_year: str
+    income_type: str
+    salary: float
+    has_hra: bool = False
+    has_health_insurance: bool = False
+    has_life_insurance: bool = False
+
+
+class DeductionSuggestionResponse(BaseModel):
+    applicable_deductions: List[dict]
+    total_possible_deduction: float
+    explanation: str
+
+
+class TaxFilingSummaryRequest(BaseModel):
+    financial_year: str
+    user_id: str
+
+
+class TaxFilingSummaryResponse(BaseModel):
+    financial_year: str
+    total_income: float
+    total_deductions: float
+    taxable_income: float
+    tax_liability: float
+    regime_used: str
+    deductions_list: List[TaxDeductionResponse]
+    filing_checklist: List[str]
+    ready_to_file: bool
+
+
 # Generic Response
 class ErrorResponse(BaseModel):
     detail: str

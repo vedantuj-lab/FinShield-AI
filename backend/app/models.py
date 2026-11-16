@@ -309,3 +309,61 @@ class PaperHolding(Base):
 
     # Relationships
     portfolio = relationship("PaperPortfolio", back_populates="holdings")
+
+
+# ==================== PHASE 5: TAX ASSISTANT ====================
+
+class TaxProfile(Base):
+    __tablename__ = "tax_profiles"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
+    financial_year = Column(String, nullable=False)  # e.g., "2024-25"
+    income_type = Column(String, nullable=False)  # "salary", "self_employed", "mixed"
+    total_income = Column(Float, default=0)
+    total_deductions = Column(Float, default=0)
+    taxable_income = Column(Float, default=0)
+    preferred_regime = Column(String, default="new")  # "old" or "new"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", backref="tax_profile")
+    deductions = relationship("TaxDeduction", back_populates="tax_profile", cascade="all, delete-orphan")
+
+
+class TaxDeduction(Base):
+    __tablename__ = "tax_deductions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    tax_profile_id = Column(String, ForeignKey("tax_profiles.id"), nullable=False)
+    deduction_type = Column(String, nullable=False)  # e.g., "80C", "80D", "HRA", "Standard"
+    category = Column(String, nullable=False)  # e.g., "Life Insurance", "Medical Insurance", "Rent"
+    amount = Column(Float, nullable=False)
+    proof_url = Column(String, nullable=True)  # URL to proof document
+    description = Column(Text, nullable=True)
+    status = Column(String, default="pending")  # "pending", "verified", "rejected"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", backref="tax_deductions")
+    tax_profile = relationship("TaxProfile", back_populates="deductions")
+
+
+class TaxRegime(Base):
+    __tablename__ = "tax_regimes"
+
+    id = Column(String, primary_key=True, index=True)
+    financial_year = Column(String, nullable=False, unique=True)  # e.g., "2024-25"
+    regime_type = Column(String, nullable=False)  # "old" or "new"
+    slab_structure = Column(Text, nullable=False)  # JSON string with slab structure
+    standard_deduction = Column(Float, default=50000)
+    standard_deduction_old = Column(Float, default=50000)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    class Config:
+        arbitrary_types_allowed = True
