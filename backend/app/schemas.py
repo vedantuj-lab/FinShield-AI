@@ -367,7 +367,7 @@ class TaxCalculationRequest(BaseModel):
 class TaxCalculationResponse(BaseModel):
     financial_year: str
     total_income: float
-    standard_deduction: float
+    total_deductions: float
     taxable_income: float
     tax_liability: float
     regime: str

@@ -129,7 +129,7 @@ async def calculate_tax(
     return TaxCalculationResponse(
         financial_year=request.financial_year,
         total_income=total_income,
-        standard_deduction=deductions,
+        total_deductions=deductions,
         taxable_income=taxable_income,
         tax_liability=total_tax,
         regime="new",
@@ -360,11 +360,9 @@ async def save_deduction(
     
     db.add(new_deduction)
     
-    # Update tax profile total deductions
-    tax_profile.total_deductions = (
-        db.query(TaxDeduction).filter(TaxDeduction.tax_profile_id == tax_profile.id).count() * 50000
-        + deduction.amount
-    )
+    # Update tax profile total deductions (sum all deductions for this profile)
+    all_deductions = db.query(TaxDeduction).filter(TaxDeduction.tax_profile_id == tax_profile.id).all()
+    tax_profile.total_deductions = sum(d.amount for d in all_deductions) + deduction.amount
     
     db.commit()
     db.refresh(new_deduction)

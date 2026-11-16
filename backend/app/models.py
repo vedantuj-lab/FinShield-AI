@@ -2,7 +2,7 @@
 SQLAlchemy models for FinShield AI
 """
 
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, ForeignKey, Text, Enum
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, ForeignKey, Text, Enum, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -317,7 +317,7 @@ class TaxProfile(Base):
     __tablename__ = "tax_profiles"
 
     id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False, unique=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
     financial_year = Column(String, nullable=False)  # e.g., "2024-25"
     income_type = Column(String, nullable=False)  # "salary", "self_employed", "mixed"
     total_income = Column(Float, default=0)
@@ -327,8 +327,12 @@ class TaxProfile(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        UniqueConstraint('user_id', 'financial_year', name='uq_user_financial_year'),
+    )
+
     # Relationships
-    user = relationship("User", backref="tax_profile")
+    user = relationship("User", backref="tax_profiles")
     deductions = relationship("TaxDeduction", back_populates="tax_profile", cascade="all, delete-orphan")
 
 
