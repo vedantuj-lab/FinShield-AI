@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 export interface User {
@@ -26,7 +25,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   // Check if user is already logged in
   useEffect(() => {
@@ -61,7 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('authToken', token)
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       setUser(userData)
-      navigate('/dashboard')
+      // Redirect handled by components that have useNavigate
+      window.location.href = '/dashboard'
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || 'Registration failed'
       setError(errorMessage)
@@ -80,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('authToken', token)
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
       setUser(userData)
-      navigate('/dashboard')
+      // Redirect handled by components that have useNavigate
+      window.location.href = '/dashboard'
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || 'Login failed'
       setError(errorMessage)
@@ -92,7 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('authToken')
     delete axios.defaults.headers.common['Authorization']
     setUser(null)
-    navigate('/')
+    // Redirect handled by components that have useNavigate
+    window.location.href = '/'
   }
 
   return (

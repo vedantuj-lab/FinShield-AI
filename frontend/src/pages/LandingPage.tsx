@@ -30,7 +30,7 @@ export default function LandingPage() {
             <Link to="/register" className="btn-primary flex items-center gap-2">
               Get Started <ArrowRight size={20} />
             </Link>
-            <button className="btn-secondary">Explore Features</button>
+            <Link to="/register" className="btn-secondary">Explore Features</Link>
           </div>
         </div>
       </section>

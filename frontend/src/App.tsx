@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import Dashboard from './pages/Dashboard'
+import ProfilePage from './pages/ProfilePage'
 import BudgetingModule from './pages/modules/BudgetingModule'
 import InvestmentModule from './pages/modules/InvestmentModule'
 import MarketInsightsModule from './pages/modules/MarketInsightsModule'
@@ -29,6 +30,7 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/budgeting" element={<BudgetingModule />} />
               <Route path="/investments" element={<InvestmentModule />} />
               <Route path="/markets" element={<MarketInsightsModule />} />
