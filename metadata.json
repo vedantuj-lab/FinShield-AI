@@ -1,0 +1,6 @@
+{
+  "name": "FINSHIELD AI",
+  "description": "Intelligent Financial Scam Prevention, Investigation & Recovery-Assistance Platform",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,391 +1,134 @@
-# FinShield AI
-## AI-Powered Financial Intelligence, Management, Analysis and Protection Platform
+# FINSHIELD AI
 
-**Plan Smarter. Invest Wiser. Detect Fraud. Protect Your Financial Future.**
+> **"Detect the manipulation. Understand the risk. Protect your money."**
 
----
-
-## Project Overview
-
-FinShield AI is a comprehensive AI-powered financial intelligence and protection platform designed for individuals, investors, traders, and small businesses in India.
-
-The platform unifies six financial activities:
-1. **Smart Budgeting** - Track expenses, set budgets, get AI-powered insights
-2. **Investment Guide** - Learn about investments, analyze portfolios, understand risks
-3. **Market Insights** - Backtest strategies, practice paper trading with historical data
-4. **Tax Assistant** - Calculate taxes, compare regimes, understand deductions
-5. **Fraud Detector** - Identify scams, analyze evidence, get emergency assistance
-6. **Business Finance** - Generate invoices, forecast cash flow, plan loans
-
-All connected through a unified AI Financial Assistant.
+FINSHIELD AI is an intelligent financial scam prevention, investigation, and recovery-assistance platform built primarily for Indian digital-payment users (UPI, banking, KYC, refund, loan, and phishing interactions).
 
 ---
 
-## Features
+## 1. Project Introduction & Problem Statement
 
-### ✅ Phase 1: Foundation (COMPLETE)
-- [x] Frontend setup (React, TypeScript, Vite, Tailwind CSS)
-- [x] Backend setup (FastAPI, Python, PostgreSQL)
-- [x] Authentication system (User login/registration)
-- [x] Role-based access control (User & Admin)
-- [x] Landing page
-- [x] Dashboard
-- [x] Navigation & Layout
-- [x] Database models for all modules
-- [x] API endpoint structure
+Digital payment fraud frequently succeeds not by bypassing cryptographic bank security, but by manipulating people into authorising transfers themselves. Victims receive fragmented signals—an alarming SMS, a follow-up telephone call impersonating bank staff, and a timed UPI collect request—making it hard to see the coordinated pattern before approving a transaction.
 
-### 🚀 Upcoming Phases
-- Phase 2: Smart Budgeting
-- Phase 3: Investment & Portfolio
-- Phase 4: Trading & Market Insights
-- Phase 5: Tax Assistant
-- Phase 6: Fraud Detection
-- Phase 7: Small Business Finance
-- Phase 8: AI Assistant
-- Phase 9: Admin & Monitoring
-- Phase 10: Final Integration
+FINSHIELD AI unites the full lifecycle:
+
+**PREVENT → INVESTIGATE → PROTECT → RECOVER**
 
 ---
 
-## Tech Stack
+## 2. Objectives & Target Users
 
-### Frontend
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **React Router** - Navigation
-- **Recharts** - Data visualization
-- **Lucide React** - Icons
-- **React Hook Form** - Form management
-- **Axios** - HTTP client
-
-### Backend
-- **Python 3.9+** - Language
-- **FastAPI** - API framework
-- **SQLAlchemy** - ORM
-- **PostgreSQL/Supabase** - Database
-- **Pydantic** - Data validation
-- **JWT** - Authentication
-- **Bcrypt** - Password hashing
-- **Google Generative AI** - AI integration
-
-### Infrastructure
-- **Frontend Hosting**: Vercel
-- **Backend Hosting**: Render
-- **Database**: Supabase / PostgreSQL
+- **Objectives**: Identify suspicious communications, detect social-engineering tactics, analyse multimodal evidence (text, screenshots, audio, URLs), connect related items into a single Scam Story Reconstruction, provide transparent rule-based risk scores, evaluate pre-payment safety, and organise post-fraud evidence for official reporting.
+- **Primary Users**: Regular UPI users, senior citizens, students, salaried professionals, and first-time digital payment users.
+- **Secondary Users**: Small business owners receiving frequent unknown payment requests, and individuals preparing fraud evidence after an incident.
 
 ---
 
-## Installation & Setup
+## 3. Core Features & USP
 
-### Prerequisites
-- Node.js 16+ and npm/yarn
-- Python 3.9+
-- PostgreSQL 12+ (or Supabase)
-- Git
+1. **Multimodal Evidence Analysis**: SMS, WhatsApp text, payment/bank screenshots (Gemini OCR), audio recordings (Gemini speech-to-text), voice transcripts, and URL structural analysis.
+2. **Psychological Manipulation Detector**: Evaluates Urgency, Fear, Authority Impersonation, Secrecy, Emotional Manipulation, Financial Pressure, Unrealistic Rewards, Threats, Confidential Data Requests, and Suspicious Payment Instructions while distinguishing suspected manipulation from proven fraud.
+3. **Scam Story Reconstruction (Primary USP)**: Connects multiple submitted evidence items into a visual relationship graph and chronological timeline, comparing payment instructions and flagging conflicting details without inventing unsupported connections.
+4. **Explainable Risk Assessment**: Transparent 0–100 rule-based scoring engine backed by verbatim evidence quotes and safeguards against duplicates, missing evidence, and benign bank alerts.
+5. **Pre-Payment Safety Checkpoint**: 9-field evaluation before approving a payment, with clear boundaries (not connected to the UPI network).
+6. **FINSHIELD RESCUE**: Emergency dossier workflow displaying **1930** and **https://cybercrime.gov.in/**, chronological timeline organisation, and downloadable PDF reports via `jsPDF`.
+7. **Supporting Modules**: Trusted Circle Protection (explicit consent, revocation, PII redaction), Multilingual UI & AI Analysis (English, Hindi, Marathi, Hinglish), Voice Assistance (STT + TTS), Investigation History, and Privacy/Data Management.
 
-### Backend Setup
+---
+
+## 4. Architecture & Technology Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, React Router, Recharts, Lucide Icons, jsPDF.
+- **Backend**: Node.js + Express (`server.ts` serving REST APIs and Vite middleware). *(Adapted from the conceptual Python/FastAPI outline to run natively in the Node.js TypeScript runtime on port 3000.)*
+- **AI Integration**: `@google/genai` server-side SDK:
+  - `gemini-4-hydrogen` (multimodal text/image OCR analysis, structured JSON manipulation detection, story reconstruction)
+  - `gemini-3.5-transcribe` (speech-to-text transcription)
+  - `gemini-3.8-flash-lite-tts` (multilingual safety audio guidance)
+- **Database**: Cloud SQL for PostgreSQL via Drizzle ORM (`src/db/schema.ts`, `src/db/index.ts`).
+- **Authentication**: Dual support for Email/Password (`bcryptjs` + HMAC-signed session tokens) and Google Sign-In via Firebase Auth (`firebase` + `firebase-admin`).
+
+---
+
+## 5. Database Schema (`src/db/schema.ts`)
+
+- `users`: `id`, `uid`, `name`, `email`, `password_hash`, `preferred_language`, `retention_days`, `redact_sensitive`, `created_at`
+- `investigations`: `id`, `investigation_code`, `user_id`, `title`, `suspected_category`, `risk_level`, `risk_score`, `status`, `summary`, `explanation`, `recommended_actions`, `is_synthetic_demo`, `created_at`, `updated_at`
+- `evidence`: `id`, `investigation_id`, `user_id`, `evidence_type`, `title`, `file_reference`, `mime_type`, `raw_input`, `extracted_text`, `analysis_summary`, `detected_indicators`, `extracted_details`, `potential_risks`, `analysis_status`, `event_timestamp`, `error_message`, `created_at`
+- `risk_indicators`: `id`, `investigation_id`, `evidence_id`, `indicator_type`, `category`, `severity`, `weight`, `detected`, `supporting_evidence`, `explanation`, `created_at`
+- `evidence_relationships`: `id`, `investigation_id`, `source_evidence_id`, `target_evidence_id`, `relationship_type`, `event_time`, `indicator_label`, `explanation`, `created_at`
+- `payment_safety_checks`: `id`, `user_id`, `amount`, `purpose`, `recipient_familiarity`, `contact_method`, `requested_by_caller`, `urgency_involved`, `kyc_related`, `confidential_info_asked`, `independently_verified`, `risk_level`, `risk_score`, `reasons`, `recommended_action`, `created_at`
+- `rescue_cases`: `id`, `rescue_code`, `user_id`, `incident_date`, `incident_time`, `amount_involved`, `payment_method`, `transaction_reference`, `bank_provider`, `suspected_category`, `description`, `actions_taken`, `pending_actions`, `evidence_items`, `timeline_events`, `report_reference`, `status`, `created_at`
+- `trusted_contacts` & `shared_warnings`: User-consented warning contacts and PII-redacted alert logs.
+
+---
+
+## 6. REST API Endpoints (`server.ts`)
+
+- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/firebase`, `GET /api/auth/me`
+- `PATCH /api/profile`, `DELETE /api/profile/data`
+- `GET /api/investigations`, `POST /api/investigations`, `POST /api/investigations/seed-demo`, `GET /api/investigations/:id`, `DELETE /api/investigations/:id`
+- `POST /api/evidence/upload`, `POST /api/evidence/analyze`, `DELETE /api/evidence/:id`
+- `POST /api/manipulation/analyze`, `POST /api/investigations/reconstruct`, `POST /api/risk/assess`
+- `POST /api/payment-safety/check`, `GET /api/payment-safety/history`
+- `POST /api/rescue/create`, `GET /api/rescue`, `GET /api/rescue/:id`, `POST /api/rescue/:id/evidence`, `GET /api/rescue/:id/report`
+- `GET /api/contacts`, `POST /api/contacts`, `PATCH /api/contacts/:id`, `DELETE /api/contacts/:id`, `POST /api/contacts/share-warning`
+- `GET /api/history`, `POST /api/voice/transcribe`, `POST /api/voice/tts`, `POST /api/evaluation/run`
+
+---
+
+## 7. Gemini AI & Scoring Architecture
+
+- All user-submitted text, transcripts, URLs, and images are wrapped inside `<UNTRUSTED_EVIDENCE_DATA>` delimiters and separated from `systemInstruction` to prevent prompt injection.
+- Structured JSON responses are enforced with `responseSchema` and validated server-side with `zod`.
+- Prototype rule weights (`server/riskEngine.ts`): Authority impersonation (20), Urgent payment demand (15), OTP/PIN request (25), Suspicious external link (15), Threat/fear language (10), Payment-purpose inconsistency (15), capped at 100 (`0–19 LOW`, `20–39 MODERATE`, `40–69 HIGH`, `70–100 CRITICAL`).
+
+---
+
+## 8. Sample Demonstration Data & Testing Methodology
+
+- `server/syntheticScenarios.ts` provides clearly labeled **SYNTHETIC DEMONSTRATION DATA** (Scenarios A–F + the 3-evidence connected investigation + 10-case multilingual evaluation benchmark).
+- Run `npx tsx tests/riskEngine.test.ts` to verify deterministic risk-scoring rules, safeguards, URL parsing, and PII redaction.
+- Visit `/methodology` in the web app and click **Run Live Synthetic Benchmark** (`POST /api/evaluation/run`) to evaluate Precision, Recall, F1-score, False-Positive Rate, and latency across English, Hindi, Hinglish, and Marathi synthetic cases.
+
+---
+
+## 9. Installation, Environment & Deployment
 
 ```bash
-# Navigate to backend directory
-cd backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# Create database tables
-# (Tables are auto-created on first run via SQLAlchemy)
-
-# Run development server
-python main.py
-```
-
-The backend will start at `http://localhost:8000`
-
-### Frontend Setup
-
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
 npm install
-
-# Create environment file
-cp .env.example .env
-# Configure API endpoint (should be http://localhost:8000/api)
-
-# Run development server
+npm run build
 npm run dev
 ```
 
-The frontend will start at `http://localhost:5173`
+Required environment variables (injected at runtime; never commit secrets):
+- `GEMINI_API_KEY`
+- `SQL_HOST`, `SQL_DB_NAME`, `SQL_USER`, `SQL_PASSWORD`, `SQL_ADMIN_USER`, `SQL_ADMIN_PASSWORD`
+- `APP_URL`
 
 ---
 
-## Project Structure
+## 10. Security, Privacy & Honest Limitations
 
-```
-FinShield-AI-main/
-├── frontend/                    # React application
-│   ├── src/
-│   │   ├── pages/              # Page components
-│   │   ├── components/         # Reusable components
-│   │   ├── context/            # Context (Auth)
-│   │   ├── layouts/            # Layout components
-│   │   ├── App.tsx             # Main app
-│   │   └── index.css           # Global styles
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
-│
-├── backend/                     # FastAPI application
-│   ├── app/
-│   │   ├── routes/             # API endpoints
-│   │   ├── models.py           # Database models
-│   │   ├── schemas.py          # Pydantic schemas
-│   │   ├── database.py         # Database config
-│   │   ├── security.py         # Auth utilities
-│   │   └── config.py           # Settings
-│   ├── main.py                 # Entry point
-│   └── requirements.txt
-│
-├── MASTER_SPEC.md              # Complete specification
-└── README.md                    # This file
-```
+- Never requests UPI PIN, OTP, ATM PIN, CVV, or banking passwords.
+- Not connected to NPCI/UPI networks: cannot block payments, cancel transactions, freeze bank accounts, or verify real account ownership.
+- Audio transcription converts speech to text and does not perform voice-biometric speaker verification.
+- PDF rescue dossiers are AI-generated evidence-organising reports—not official police complaints, legal determinations, or guarantees of financial recovery.
+- Live external URL reputation lookup is not configured; URL risk relies on observable structural inspection.
 
 ---
 
-## Database Schema
+## 11. Implementation Status Checklist
 
-### Core Tables
-- **users** - User accounts and authentication
-- **audit_logs** - System audit trail
-
-### Budgeting Module
-- **transactions** - Financial transactions
-- **budgets** - Monthly budgets
-- **category_budgets** - Category-level budgets
-
-### Investment Module
-- **investments** - User investments
-
-### Fraud Module
-- **investigations** - Fraud investigations
-
-### Business Module
-- **business_profiles** - Business information
-
----
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/logout` - Logout
-
-### Budgeting
-- `GET /api/budget/summary` - Budget summary
-- `POST /api/budget/transactions` - Add transaction
-- `GET /api/budget/transactions` - List transactions
-- `GET /api/budget/insights` - AI spending insights
-
-### Investments
-- `GET /api/investments/portfolio` - Get portfolio
-- `POST /api/investments/holdings` - Add holding
-- `POST /api/investments/calculators/sip` - SIP calculator
-- `POST /api/investments/calculators/fd` - FD calculator
-
-### Trading
-- `GET /api/markets/historical` - Historical data
-- `POST /api/trading/backtest` - Backtest strategy
-- `POST /api/trading/paper-orders` - Place paper order
-
-### Tax
-- `POST /api/tax/calculate` - Calculate tax
-- `POST /api/tax/compare-regimes` - Compare regimes
-- `GET /api/tax/rules` - Tax rules
-
-### Fraud
-- `POST /api/fraud/analyze` - Analyze evidence
-- `POST /api/fraud/investigations` - Create investigation
-- `POST /api/fraud/rescue/create` - Create rescue case
-
-### Business
-- `POST /api/business/profile` - Create business profile
-- `POST /api/business/invoices` - Create invoice
-- `POST /api/business/loan/emi` - Calculate EMI
-
-### Admin
-- `GET /api/admin/overview` - Admin dashboard
-- `GET /api/admin/users` - List users
-- `PATCH /api/admin/users/{id}` - Update user
-- `GET /api/admin/audit-logs` - Audit logs
-
----
-
-## Environment Configuration
-
-### Frontend (.env)
-```
-VITE_API_URL=http://localhost:8000/api
-```
-
-### Backend (.env)
-```
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/finshield_db
-
-# JWT
-SECRET_KEY=your-secret-key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# AI
-GEMINI_API_KEY=your-gemini-api-key
-
-# Admin
-ADMIN_EMAIL=admin@finshield.ai
-ADMIN_PASSWORD=admin123
-
-# URLs
-FRONTEND_URL=http://localhost:5173
-
-# Environment
-ENVIRONMENT=development
-DEBUG=true
-```
-
----
-
-## User Roles & Permissions
-
-### User Role
-- Access all six financial modules
-- Create and manage personal financial data
-- Use AI assistant
-- View personal reports
-- Access profile and settings
-
-### Admin Role
-- User management (view, suspend/activate)
-- Platform analytics
-- AI service monitoring
-- Fraud detection management
-- System administration
-- Audit logs
-
----
-
-## Authentication Flow
-
-1. **Registration**: New users register with name, email, password
-2. **Login**: Users login and receive JWT token
-3. **Token Storage**: Token stored in localStorage
-4. **Protected Routes**: Token required for authenticated endpoints
-5. **Role-Based Access**: Admin routes verified server-side
-
----
-
-## Security Features
-
-- ✅ HTTPS-only endpoints
-- ✅ Password hashing with bcrypt
-- ✅ JWT token authentication
-- ✅ Server-side role verification
-- ✅ SQL injection prevention (SQLAlchemy ORM)
-- ✅ CORS protection
-- ✅ Rate limiting ready
-- ✅ No sensitive data in localStorage beyond token
-- ✅ Never stores OTP, PIN, CVV, passwords
-
----
-
-## Development Workflow
-
-### For Frontend Development
-```bash
-cd frontend
-npm run dev       # Start dev server
-npm run build     # Build for production
-npm run lint      # Lint code
-npm run type-check # Check types
-```
-
-### For Backend Development
-```bash
-cd backend
-source venv/bin/activate
-python main.py    # Run dev server
-```
-
----
-
-## Deployment
-
-### Frontend (Vercel)
-```bash
-cd frontend
-vercel deploy
-```
-
-### Backend (Render)
-```bash
-# Push to GitHub
-# Connect repository to Render
-# Configure environment variables
-# Deploy
-```
-
----
-
-## Current Status
-
-**Phase 1: Foundation** ✅ COMPLETE
-
-The foundation is now in place with:
-- Full authentication system
-- Database models for all modules
-- API endpoint structure
-- Frontend routing and layouts
-- Professional landing page
-
-**Next Steps**: Begin Phase 2 - Smart Budgeting module implementation.
-
----
-
-## Documentation
-
-- **MASTER_SPEC.md** - Complete 28-part specification document
-- **API Documentation** - Auto-generated at /docs endpoint
-- **Database Design** - See MASTER_SPEC.md Part 17
-
----
-
-## Support & Contact
-
-For questions or issues:
-- Email: support@finshield.ai
-- GitHub Issues: Issue tracking
-- Documentation: See MASTER_SPEC.md
-
----
-
-*Last Updated: January 2024*
-*FinShield AI - All rights reserved*
+| Capability | Status | Notes |
+| --- | --- | --- |
+| User Registration & Login (Email + Google) | **Fully Implemented** | PostgreSQL `users` + `bcryptjs` + Firebase Auth |
+| Multimodal Evidence Upload & OCR/STT | **Fully Implemented** | `multer` + `gemini-4-hydrogen` + `gemini-3.5-transcribe` |
+| Psychological Manipulation Detection | **Fully Implemented** | 6 core cards + 4 extended signals |
+| Scam Story Reconstruction | **Fully Implemented** | Visual node graph, timeline, conflict detection |
+| Explainable Rule-Based Risk Engine | **Fully Implemented** | Transparent 0–100 weights + safeguards |
+| Pre-Payment Safety Checkpoint | **Fully Implemented** | 9-field evaluation + persisted history |
+| FINSHIELD RESCUE & PDF Dossier | **Fully Implemented** | 1930/portal guidance + `jsPDF` download |
+| Trusted Circle Protection | **Fully Implemented** | Consent, revocation, PII redaction |
+| Multilingual (EN/HI/MR) & Voice Assistance | **Fully Implemented** | UI translations + Gemini STT & TTS |
+| Live URL Domain Reputation API | **Development-Mode Demonstration** | Structural URL parser active; external threat-intel feed not configured |
+| Live Banking / UPI Network Integration | **Not Implemented (Out of Scope)** | Intentionally excluded; explicitly disclaimed |
