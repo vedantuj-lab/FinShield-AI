@@ -1058,3 +1058,89 @@ class EMIPlanResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== PHASE 9: ADMIN & MONITORING SCHEMAS ====================
+
+class AdminUserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    role: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminUserUpdateRequest(BaseModel):
+    is_active: Optional[bool] = None
+    role: Optional[str] = None
+
+
+class AuditLogResponse(BaseModel):
+    id: str
+    action: str
+    entity_type: str
+    entity_id: str
+    user_id: Optional[str] = None
+    details: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogsListResponse(BaseModel):
+    logs: List[AuditLogResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+class AdminOverviewResponse(BaseModel):
+    users: dict
+    transactions: dict
+    investigations: dict
+    rescue_cases: dict
+    ai_usage: dict
+    timestamp: datetime
+
+
+class AnalyticsResponse(BaseModel):
+    period_days: int
+    new_users: int
+    transactions: dict
+    investigations: dict
+    rescue_cases: dict
+    timestamp: datetime
+
+
+class HealthMetricResponse(BaseModel):
+    status: str
+    database: dict
+    services: dict
+    recent_activity: List[dict]
+    timestamp: datetime
+
+
+class SystemMetricsResponse(BaseModel):
+    transactions: dict
+    investigations: dict
+    timestamp: datetime
+
+
+class AdminDashboardResponse(BaseModel):
+    overview: AdminOverviewResponse
+    recent_activity: List[AuditLogResponse]
+    health_status: HealthMetricResponse
+    timestamp: datetime
