@@ -24,6 +24,13 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
 
 
+class AuditLogCreate(BaseModel):
+    action: str
+    entity_type: str
+    entity_id: str
+    details: Optional[str] = None
+
+
 def get_admin_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> User:
     """Get admin user and verify admin role"""
     if not authorization or not authorization.startswith("Bearer "):
@@ -397,17 +404,14 @@ async def get_audit_logs(
 
 
 @router.post("/audit-logs")
-async def create_audit_log(
-    action: str,
-    entity_type: str,
-    entity_id: str,
+async def create_audit_log_endpoint(
+    log_data: AuditLogCreate,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-    details: str = None,
 ):
     """Manually create an audit log entry (for admin actions)"""
     
-    log_audit(db, action, entity_type, entity_id, admin_user.id, details)
+    log_audit(db, log_data.action, log_data.entity_type, log_data.entity_id, admin_user.id, log_data.details)
     
     return {"message": "Audit log created", "timestamp": datetime.utcnow()}
 
