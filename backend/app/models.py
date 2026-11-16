@@ -35,6 +35,7 @@ class User(Base):
     investigations = relationship("Investigation", back_populates="user", cascade="all, delete-orphan")
     business_profiles = relationship("BusinessProfile", back_populates="user", cascade="all, delete-orphan")
     portfolios = relationship("Portfolio", back_populates="user", cascade="all, delete-orphan")
+    paper_portfolios = relationship("PaperPortfolio", back_populates="user", cascade="all, delete-orphan")
 
 
 class Transaction(Base):
@@ -147,7 +148,7 @@ class Portfolio(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", backref="portfolio")
+    user = relationship("User", back_populates="portfolios")
     holdings = relationship("PortfolioHolding", back_populates="portfolio", cascade="all, delete-orphan")
 
 
@@ -287,7 +288,7 @@ class PaperPortfolio(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    user = relationship("User", backref="paper_portfolio")
+    user = relationship("User", back_populates="paper_portfolios")
     holdings = relationship("PaperHolding", back_populates="portfolio", cascade="all, delete-orphan")
 
 

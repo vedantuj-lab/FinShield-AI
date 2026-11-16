@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
+from pydantic import BaseModel
+from typing import Optional
 from app.database import get_db
 from app.models import (
     User, UserRole, AuditLog, Transaction, Budget, Investigation,
@@ -14,6 +16,12 @@ from app.models import (
 )
 
 router = APIRouter()
+
+
+# Pydantic schemas
+class UserUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    role: Optional[str] = None
 
 
 def get_admin_user(authorization: str = Header(None), db: Session = Depends(get_db)) -> User:
@@ -152,8 +160,7 @@ async def list_users(
 @router.put("/users/{user_id}")
 async def update_user(
     user_id: str,
-    is_active: bool = None,
-    role: str = None,
+    update_data: UserUpdate,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -164,14 +171,16 @@ async def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     changes = []
-    if is_active is not None and is_active != user.is_active:
-        user.is_active = is_active
-        changes.append(f"is_active={is_active}")
+    if update_data.is_active is not None and update_data.is_active != user.is_active:
+        user.is_active = update_data.is_active
+        changes.append(f"is_active={update_data.is_active}")
     
-    if role and role in [UserRole.USER, UserRole.ADMIN]:
-        if role != user.role:
-            user.role = role
-            changes.append(f"role={role}")
+    if update_data.role:
+        role = update_data.role.upper() if isinstance(update_data.role, str) else update_data.role
+        if role in ["USER", "ADMIN"]:
+            if role != user.role:
+                user.role = role
+                changes.append(f"role={role}")
     
     user.updated_at = datetime.utcnow()
     db.commit()

@@ -168,7 +168,7 @@ class TestCashFlowForecasting:
         multiplier = 1 + (growth_rate / 100)
         projected_amount = base_amount * multiplier
         
-        assert projected_amount == 110000
+        assert abs(projected_amount - 110000) < 0.01  # Allow for floating point precision
 
     def test_cash_flow_with_seasonality(self):
         """Test cash flow with seasonality factor"""
@@ -237,7 +237,7 @@ class TestInvoiceItem:
         ]
         
         subtotal = sum(item['quantity'] * item['unit_price'] for item in items)
-        assert subtotal == 6000
+        assert subtotal == 7000  # 5000 + 1000 + 1000
 
     def test_invoice_total_with_gst(self):
         """Test invoice total calculation with GST"""
