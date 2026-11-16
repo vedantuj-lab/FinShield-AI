@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import MarketChart from '../../components/trading/MarketChart';
@@ -8,12 +8,13 @@ import PaperTradingInterface from '../../components/trading/PaperTradingInterfac
 import MarketSignals from '../../components/trading/MarketSignals';
 
 export default function MarketInsightsModule() {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedSymbol, setSelectedSymbol] = useState('INFY');
+  const token = localStorage.getItem('authToken') || '';
 
-  if (!token) {
+  if (!isAuthenticated) {
     navigate('/login');
     return null;
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, TrendingUp, TrendingDown } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import axios from 'axios'
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 
@@ -31,7 +31,7 @@ interface RiskAnalysis {
 }
 
 export default function RiskAnalysisDisplay() {
-  const [holdings, setHoldings] = useState<Holding[]>([
+  const [holdings] = useState<Holding[]>([
     { name: 'HDFC Bank', current_value: 100000, category: 'Stock', sector: 'Banking' },
     { name: 'Axis Mutual Fund', current_value: 50000, category: 'Mutual Fund', sector: 'Diversified' },
     { name: 'FD - HDFC', current_value: 50000, category: 'FD', sector: 'Fixed Income' },
@@ -153,7 +153,7 @@ export default function RiskAnalysisDisplay() {
                       outerRadius={100}
                       label
                     >
-                      {analysis.holdings_analysis.map((entry, index) => (
+                      {analysis.holdings_analysis.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

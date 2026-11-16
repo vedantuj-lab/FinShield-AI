@@ -87,8 +87,6 @@ const MarketChart: React.FC<MarketChartProps> = ({ symbol, token }) => {
         <div className="text-sm text-gray-600 font-mono leading-relaxed">
           {/* Simple candlestick visualization */}
           {data.slice(-20).map((d, idx) => {
-            const high = ((d.high_price - minPrice) / range) * 100;
-            const low = ((d.low_price - minPrice) / range) * 100;
             const close = ((d.close_price - minPrice) / range) * 100;
             const isUp = d.close_price >= d.open_price;
             

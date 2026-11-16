@@ -15,7 +15,6 @@ export default function EducationHub() {
   const [resources, setResources] = useState<EducationResource[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
 
   const categories = [
@@ -114,7 +113,6 @@ export default function EducationHub() {
       setLoading(true)
       const response = await axios.get('/api/investments/education/resources')
       setResources(response.data && response.data.length > 0 ? response.data : defaultResources)
-      setError(null)
     } catch (err) {
       console.error('Error fetching resources:', err)
       // Use default resources if API fails

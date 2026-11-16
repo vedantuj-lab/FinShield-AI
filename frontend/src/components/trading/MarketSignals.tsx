@@ -23,13 +23,11 @@ const MarketSignals: React.FC<MarketSignalsProps> = ({ symbol, token }) => {
   const [signals, setSignals] = useState<Signals | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timer | null>(null);
 
   useEffect(() => {
     fetchSignals();
     // Auto-refresh every 5 minutes
     const interval = setInterval(fetchSignals, 5 * 60 * 1000);
-    setRefreshInterval(interval);
 
     return () => {
       if (interval) clearInterval(interval);

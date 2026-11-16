@@ -16,7 +16,6 @@ interface FilingSummary {
 
 export default function TaxFilingPrep() {
   const [financialYear, setFinancialYear] = useState('2024-25')
-  const [userId, setUserId] = useState('')
   const [summary, setSummary] = useState<FilingSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
