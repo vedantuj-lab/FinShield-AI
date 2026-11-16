@@ -371,3 +371,378 @@ class TaxRegime(Base):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+# ==================== PHASE 6: FRAUD DETECTION SYSTEM ====================
+
+class Evidence(Base):
+    __tablename__ = "evidence"
+
+    id = Column(String, primary_key=True, index=True)
+    investigation_id = Column(String, ForeignKey("investigations.id"), nullable=False)
+    case_id = Column(String, ForeignKey("rescue_cases.id"), nullable=True)
+    
+    # File metadata
+    file_name = Column(String, nullable=False)
+    file_type = Column(String, nullable=False)  # receipt, document, screenshot, email, other
+    file_path = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)
+    mime_type = Column(String, nullable=True)
+    
+    # Storage & indexing
+    storage_backend = Column(String, default="local")  # s3, local, encrypted
+    storage_location = Column(String, nullable=False)
+    upload_timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Content extraction
+    extracted_text = Column(Text, nullable=True)
+    extracted_metadata = Column(Text, nullable=True)  # JSON
+    
+    # Status & validation
+    status = Column(String, default="uploaded")  # uploaded, processing, verified, rejected
+    validation_errors = Column(Text, nullable=True)  # JSON
+    
+    # Related evidence
+    related_evidence_ids = Column(Text, nullable=True)  # JSON array
+    fraud_score = Column(Float, default=0)
+    
+    # Audit
+    uploaded_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)
+    
+    # Relationships
+    investigation = relationship("Investigation", back_populates="evidence")
+    user = relationship("User", backref="evidence_uploads")
+    analysis = relationship("EvidenceAnalysis", back_populates="evidence", cascade="all, delete-orphan")
+
+
+class EvidenceAnalysis(Base):
+    __tablename__ = "evidence_analysis"
+
+    id = Column(String, primary_key=True, index=True)
+    evidence_id = Column(String, ForeignKey("evidence.id"), nullable=False)
+    investigation_id = Column(String, ForeignKey("investigations.id"), nullable=False)
+    
+    # Analysis results
+    analysis_type = Column(String, nullable=False)  # text_analysis, metadata_analysis, pattern_match
+    indicators_found = Column(Text, nullable=True)  # JSON
+    confidence_score = Column(Float, default=0)
+    
+    # Risk assessment
+    anomaly_flags = Column(Text, nullable=True)  # JSON
+    matched_patterns = Column(Text, nullable=True)  # JSON
+    risk_level = Column(String, default="LOW")  # LOW, MEDIUM, HIGH, CRITICAL
+    
+    # Timestamps
+    analyzed_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    evidence = relationship("Evidence", back_populates="analysis")
+
+
+class FraudPattern(Base):
+    __tablename__ = "fraud_patterns"
+
+    id = Column(String, primary_key=True, index=True)
+    pattern_name = Column(String, unique=True, nullable=False)
+    category = Column(String, nullable=False)  # phishing, payment_fraud, identity_theft, etc
+    
+    # Pattern definition
+    description = Column(Text, nullable=False)
+    indicators = Column(Text, nullable=False)  # JSON array of patterns
+    risk_score_base = Column(Float, default=50)
+    frequency_threshold = Column(Integer, default=1)
+    
+    # Status & management
+    status = Column(String, default="active")  # active, archived, experimental
+    severity = Column(String, default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
+    
+    # Statistics
+    cases_matched = Column(Integer, default=0)
+    success_rate = Column(Float, default=0)
+    false_positive_rate = Column(Float, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_matched = Column(DateTime, nullable=True)
+
+
+class RiskScore(Base):
+    __tablename__ = "risk_scores"
+
+    id = Column(String, primary_key=True, index=True)
+    investigation_id = Column(String, ForeignKey("investigations.id"), unique=True, nullable=False)
+    
+    # Component scores (0-100)
+    evidence_score = Column(Float, default=0)
+    pattern_match_score = Column(Float, default=0)
+    anomaly_score = Column(Float, default=0)
+    correlation_score = Column(Float, default=0)
+    temporal_score = Column(Float, default=0)
+    
+    # Aggregate risk
+    overall_risk = Column(Float, default=0)
+    risk_level = Column(String, default="LOW")  # LOW, MEDIUM, HIGH, CRITICAL
+    confidence = Column(Float, default=0)
+    
+    # Breakdown
+    calculation_details = Column(Text, nullable=True)  # JSON
+    reasoning = Column(Text, nullable=True)
+    
+    calculated_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TimelineEvent(Base):
+    __tablename__ = "timeline_events"
+
+    id = Column(String, primary_key=True, index=True)
+    investigation_id = Column(String, ForeignKey("investigations.id"), nullable=False)
+    
+    # Event info
+    event_type = Column(String, nullable=False)  # investigation_opened, evidence_added, etc
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    
+    # Context
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    severity = Column(String, nullable=True)  # INFO, WARNING, ALERT
+    
+    # Data reference
+    related_entity_id = Column(String, nullable=True)
+    related_entity_type = Column(String, nullable=True)  # investigation, evidence, finding
+    metadata = Column(Text, nullable=True)  # JSON
+
+
+class CaseFind(Base):
+    __tablename__ = "case_findings"
+
+    id = Column(String, primary_key=True, index=True)
+    investigation_id = Column(String, ForeignKey("investigations.id"), nullable=False)
+    
+    # Finding content
+    finding_text = Column(Text, nullable=False)
+    finding_type = Column(String, nullable=False)  # evidence, analysis_result, pattern_match, etc
+    
+    # Severity & impact
+    severity = Column(String, default="MEDIUM")  # LOW, MEDIUM, HIGH, CRITICAL
+    fraud_confidence = Column(Float, default=0)
+    
+    # Connection to evidence
+    related_evidence_ids = Column(Text, nullable=True)  # JSON array
+    
+    # Attribution & tracking
+    added_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TransactionCheckpoint(Base):
+    __tablename__ = "transaction_checkpoints"
+
+    id = Column(String, primary_key=True, index=True)
+    transaction_id = Column(String, ForeignKey("transactions.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    
+    # Checkpoint info
+    checkpoint_type = Column(String, default="pre_payment_validation")
+    status = Column(String, default="pending")  # pending, approved, blocked, escalated, expired
+    
+    # Validation results
+    validation_rules_passed = Column(Text, nullable=True)  # JSON
+    validation_rules_failed = Column(Text, nullable=True)  # JSON
+    
+    # Risk assessment
+    risk_score = Column(Float, default=0)
+    risk_level = Column(String, default="LOW")  # LOW, MEDIUM, HIGH, CRITICAL
+    risk_reasons = Column(Text, nullable=True)  # JSON
+    
+    # Transaction details (denormalized)
+    transaction_amount = Column(Float, nullable=False)
+    transaction_merchant = Column(String, nullable=True)
+    transaction_type = Column(String, nullable=True)
+    transaction_date = Column(DateTime, nullable=True)
+    
+    # User confirmation
+    confirmation_required = Column(Boolean, default=False)
+    confirmation_token = Column(String, nullable=True)
+    confirmed_at = Column(DateTime, nullable=True)
+    confirmed_by_ip = Column(String, nullable=True)
+    confirmation_method = Column(String, nullable=True)  # otp, email_link, biometric, manual_review
+    
+    # Audit
+    checked_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    transaction = relationship("Transaction", backref="checkpoints")
+
+
+class ValidationRule(Base):
+    __tablename__ = "validation_rules"
+
+    id = Column(String, primary_key=True, index=True)
+    rule_name = Column(String, unique=True, nullable=False)
+    category = Column(String, nullable=False)  # amount, velocity, merchant, pattern, account
+    
+    # Rule definition
+    description = Column(Text, nullable=False)
+    rule_logic = Column(Text, nullable=False)  # JSON
+    threshold_value = Column(Float, nullable=True)
+    action = Column(String, nullable=False)  # flag, block, escalate
+    
+    # Status
+    status = Column(String, default="active")  # active, inactive, testing
+    priority = Column(Integer, default=0)
+    
+    # Statistics
+    true_positives = Column(Integer, default=0)
+    false_positives = Column(Integer, default=0)
+    true_negatives = Column(Integer, default=0)
+    false_negatives = Column(Integer, default=0)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated_by = Column(String, ForeignKey("users.id"), nullable=True)
+
+
+class RescueCase(Base):
+    __tablename__ = "rescue_cases"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    investigation_id = Column(String, ForeignKey("investigations.id"), nullable=True)
+    
+    # Incident details
+    incident_date = Column(DateTime, nullable=False)
+    incident_type = Column(String, nullable=False)  # fraudulent_transaction, unauthorized_access, etc
+    incident_description = Column(Text, nullable=False)
+    
+    # Dispute filing
+    filing_status = Column(String, default="draft")  # draft, filed, under_review, appealed
+    filing_date = Column(DateTime, nullable=True)
+    dispute_ref_number = Column(String, nullable=True)
+    
+    # Amount involved
+    disputed_amount = Column(Float, nullable=False)
+    currency = Column(String, default="INR")
+    payment_method = Column(String, nullable=False)  # credit_card, debit_card, net_banking, upi, wallet
+    
+    # Merchant/Transaction details
+    merchant_name = Column(String, nullable=False)
+    merchant_id = Column(String, nullable=True)
+    transaction_id = Column(String, ForeignKey("transactions.id"), nullable=True)
+    
+    # Chargeback management
+    chargeback_filed = Column(Boolean, default=False)
+    chargeback_date = Column(DateTime, nullable=True)
+    chargeback_ref_number = Column(String, nullable=True)
+    chargeback_status = Column(String, nullable=True)  # filed, accepted, rejected, appealed, resolved
+    chargeback_amount = Column(Float, nullable=True)
+    
+    # Recovery tracking
+    recovery_status = Column(String, default="pending")  # pending, recovered, partial, unsuccessful
+    recovered_amount = Column(Float, default=0)
+    recovery_date = Column(DateTime, nullable=True)
+    recovery_reference = Column(String, nullable=True)
+    
+    # Case resolution
+    case_status = Column(String, default="open")  # open, in_progress, resolved, closed, escalated
+    resolution_type = Column(String, nullable=True)  # refund, reversal, replacement, writeoff, pending
+    resolution_date = Column(DateTime, nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+    
+    # Communication
+    user_contacted = Column(Boolean, default=False)
+    last_contact_date = Column(DateTime, nullable=True)
+    next_action_date = Column(DateTime, nullable=True)
+    
+    # Audit & compliance
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    handled_by = Column(String, ForeignKey("users.id"), nullable=True)
+    
+    # Relationships
+    user = relationship("User", backref="rescue_cases", foreign_keys=[user_id])
+    investigation = relationship("Investigation", back_populates="rescue_case")
+    communication_logs = relationship("CommunicationLog", back_populates="rescue_case", cascade="all, delete-orphan")
+    recovery_tracking = relationship("RecoveryTracking", back_populates="rescue_case", cascade="all, delete-orphan")
+    evidence = relationship("Evidence", back_populates="case", foreign_keys=[Evidence.case_id])
+
+
+class CommunicationLog(Base):
+    __tablename__ = "communication_logs"
+
+    id = Column(String, primary_key=True, index=True)
+    rescue_case_id = Column(String, ForeignKey("rescue_cases.id"), nullable=False)
+    
+    # Communication details
+    communication_type = Column(String, nullable=False)  # email, sms, in_app, phone, letter
+    direction = Column(String, nullable=False)  # outgoing, incoming
+    subject = Column(String, nullable=True)
+    message = Column(Text, nullable=False)
+    
+    # Parties involved
+    sent_by = Column(String, ForeignKey("users.id"), nullable=False)
+    sent_to = Column(String, nullable=False)
+    recipient_type = Column(String, nullable=False)  # user, bank, merchant, support
+    
+    # Timestamps
+    sent_at = Column(DateTime, default=datetime.utcnow)
+    delivered_at = Column(DateTime, nullable=True)
+    read_at = Column(DateTime, nullable=True)
+    
+    # Status
+    status = Column(String, default="sent")  # sent, failed, bounced, opened
+    
+    # Reference
+    external_ref = Column(String, nullable=True)
+    
+    # Relationships
+    rescue_case = relationship("RescueCase", back_populates="communication_logs")
+
+
+class RecoveryTracking(Base):
+    __tablename__ = "recovery_tracking"
+
+    id = Column(String, primary_key=True, index=True)
+    rescue_case_id = Column(String, ForeignKey("rescue_cases.id"), nullable=False)
+    
+    # Recovery event
+    event_type = Column(String, nullable=False)  # refund_initiated, refund_processed, chargeback_won, etc
+    
+    # Amount & timing
+    recovery_amount = Column(Float, nullable=False)
+    recovery_date = Column(DateTime, nullable=False)
+    expected_settlement_date = Column(DateTime, nullable=True)
+    actual_settlement_date = Column(DateTime, nullable=True)
+    
+    # Reference & tracking
+    reference_number = Column(String, nullable=False)
+    bank_reference = Column(String, nullable=True)
+    
+    # Status
+    status = Column(String, default="pending")  # pending, in_progress, completed, failed
+    notes = Column(Text, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    rescue_case = relationship("RescueCase", back_populates="recovery_tracking")
+
+
+# Update Investigation model to include new relationships
+Investigation.evidence = relationship("Evidence", back_populates="investigation", cascade="all, delete-orphan")
+Investigation.case_findings = relationship("CaseFind", cascade="all, delete-orphan")
+Investigation.risk_score = relationship("RiskScore", cascade="all, delete-orphan")
+Investigation.timeline_events = relationship("TimelineEvent", cascade="all, delete-orphan")
+Investigation.rescue_case = relationship("RescueCase", back_populates="investigation", uselist=False)
+
+# Add back reference for Evidence case relationship
+Evidence.case = relationship("RescueCase", back_populates="evidence", foreign_keys=[Evidence.case_id])

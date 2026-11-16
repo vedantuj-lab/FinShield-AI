@@ -431,3 +431,436 @@ class ErrorResponse(BaseModel):
 class SuccessResponse(BaseModel):
     message: str
     data: Optional[dict] = None
+
+
+# ==================== PHASE 6: FRAUD DETECTION SYSTEM SCHEMAS ====================
+
+# Evidence Schemas
+class EvidenceCreate(BaseModel):
+    investigation_id: str
+    case_id: Optional[str] = None
+    file_type: str  # receipt, document, screenshot, email, other
+    file_name: str
+    description: Optional[str] = None
+
+
+class EvidenceResponse(BaseModel):
+    id: str
+    investigation_id: str
+    case_id: Optional[str] = None
+    file_name: str
+    file_type: str
+    file_size: int
+    status: str
+    fraud_score: float
+    upload_timestamp: datetime
+    extracted_text: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EvidenceListResponse(BaseModel):
+    items: List[EvidenceResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+# Evidence Analysis Schemas
+class AnalysisIndicator(BaseModel):
+    indicator: str
+    type: str
+    confidence: float
+    details: Optional[str] = None
+
+
+class AnomalyFlag(BaseModel):
+    anomaly: str
+    severity: str  # LOW, MEDIUM, HIGH, CRITICAL
+    details: Optional[str] = None
+
+
+class PatternMatch(BaseModel):
+    pattern_id: str
+    pattern_name: str
+    match_confidence: float
+    matches: List[str]
+
+
+class AnalysisResultResponse(BaseModel):
+    evidence_id: str
+    analysis_type: str
+    indicators_found: List[AnalysisIndicator]
+    confidence_score: float
+    anomaly_flags: List[AnomalyFlag]
+    matched_patterns: List[PatternMatch]
+    risk_level: str
+    analyzed_at: datetime
+
+
+class AnalysisRequest(BaseModel):
+    evidence_id: str
+    investigation_id: str
+    analysis_type: str = "all"  # text_analysis, metadata_analysis, pattern_match, all
+
+
+# Risk Score Schemas
+class RiskScoreComponent(BaseModel):
+    evidence_score: float
+    pattern_match_score: float
+    anomaly_score: float
+    correlation_score: float
+    temporal_score: float
+
+
+class RiskScoreResponse(BaseModel):
+    investigation_id: str
+    overall_risk: float
+    risk_level: str
+    confidence: float
+    component_scores: RiskScoreComponent
+    calculation_details: Optional[dict] = None
+    reasoning: Optional[str] = None
+    calculated_at: datetime
+
+
+class RiskScoreRequest(BaseModel):
+    investigation_id: str
+    include_components: bool = True
+
+
+# Fraud Pattern Schemas
+class FraudPatternResponse(BaseModel):
+    id: str
+    pattern_name: str
+    category: str
+    indicators: List[str]
+    risk_score_base: float
+    severity: str
+    cases_matched: int
+    success_rate: float
+
+    class Config:
+        from_attributes = True
+
+
+class FraudPatternsListResponse(BaseModel):
+    items: List[FraudPatternResponse]
+    total: int
+
+
+class PatternTestRequest(BaseModel):
+    pattern_id: str
+    text: str
+
+
+class PatternTestResponse(BaseModel):
+    pattern_id: str
+    pattern_name: str
+    matches: List[str]
+    match_count: int
+    confidence: float
+    indicator_breakdown: List[dict]
+
+
+# Investigation Schemas (Enhanced)
+class InvestigationCreateFraud(BaseModel):
+    title: str
+    description: Optional[str] = None
+    case_type: str = "suspicious_transaction"  # suspicious_transaction, phishing_report, identity_concern, payment_issue
+    priority: str = "MEDIUM"  # LOW, MEDIUM, HIGH, CRITICAL
+
+
+class TimelineEventResponse(BaseModel):
+    id: str
+    event_type: str
+    title: str
+    description: Optional[str] = None
+    created_at: datetime
+    created_by: str
+    severity: Optional[str] = None
+
+
+class CaseFindResponse(BaseModel):
+    id: str
+    investigation_id: str
+    finding_text: str
+    finding_type: str
+    severity: str
+    fraud_confidence: float
+    created_at: datetime
+
+
+class InvestigationDetailResponse(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    description: Optional[str] = None
+    status: str
+    priority: str
+    risk_level: str
+    evidence_collection: List[EvidenceResponse]
+    case_findings: List[CaseFindResponse]
+    risk_score: Optional[RiskScoreResponse] = None
+    timeline: List[TimelineEventResponse]
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: Optional[datetime] = None
+
+
+class InvestigationUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    priority: Optional[str] = None
+    findings_summary: Optional[str] = None
+    conclusion: Optional[str] = None
+
+
+class InvestigationsListResponse(BaseModel):
+    items: List[dict]
+    total: int
+    active_count: int
+    high_risk_count: int
+
+
+class FindingCreateRequest(BaseModel):
+    finding_text: str
+    finding_type: str
+    severity: str = "MEDIUM"
+    fraud_confidence: Optional[float] = 0
+    related_evidence_ids: Optional[List[str]] = None
+
+
+# Pre-Payment Checkpoint Schemas
+class CheckpointValidationRequest(BaseModel):
+    transaction_id: str
+    transaction_amount: float
+    merchant_id: str
+    merchant_name: str
+    transaction_type: str
+
+
+class ValidationResult(BaseModel):
+    rule_name: str
+    passed: bool
+    reason: Optional[str] = None
+
+
+class CheckpointValidationResponse(BaseModel):
+    checkpoint_id: str
+    transaction_id: str
+    status: str  # approved, blocked, requires_confirmation
+    risk_score: float
+    risk_level: str
+    validation_results: dict
+    risk_factors: List[str]
+    confirmation_required: bool
+    confirmation_token: Optional[str] = None
+    confirmation_expires_at: Optional[datetime] = None
+    checked_at: datetime
+
+
+class CheckpointConfirmRequest(BaseModel):
+    checkpoint_id: str
+    confirmation_token: str
+    user_ip: str
+
+
+class CheckpointConfirmResponse(BaseModel):
+    checkpoint_id: str
+    status: str
+    confirmed_at: datetime
+    confirmation_method: str
+    expires_in_seconds: int
+
+
+class CheckpointResponse(BaseModel):
+    id: str
+    transaction_id: str
+    status: str
+    risk_score: float
+    risk_level: str
+    checked_at: datetime
+    confirmed_at: Optional[datetime] = None
+    confirmation_expires_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ValidationRuleResponse(BaseModel):
+    id: str
+    rule_name: str
+    category: str
+    description: str
+    threshold_value: Optional[float] = None
+    action: str
+    priority: int
+    true_positives: int
+    false_positives: int
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class ValidationRulesListResponse(BaseModel):
+    items: List[ValidationRuleResponse]
+
+
+# FINSHIELD RESCUE Schemas
+class RescueCaseCreateRequest(BaseModel):
+    investigation_id: Optional[str] = None
+    incident_type: str  # fraudulent_transaction, unauthorized_access, account_takeover, refund_issue
+    incident_description: str
+    incident_date: datetime
+    payment_method: str  # credit_card, debit_card, net_banking, upi, wallet
+    merchant_name: str
+    transaction_id: Optional[str] = None
+    disputed_amount: float
+    currency: str = "INR"
+
+
+class CommunicationLogResponse(BaseModel):
+    id: str
+    rescue_case_id: str
+    communication_type: str
+    direction: str
+    message: str
+    sent_at: datetime
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class RecoveryTrackingResponse(BaseModel):
+    id: str
+    event_type: str
+    recovery_amount: float
+    recovery_date: datetime
+    status: str
+    reference_number: str
+
+    class Config:
+        from_attributes = True
+
+
+class RescueCaseResponse(BaseModel):
+    id: str
+    case_id: str
+    user_id: str
+    incident_type: str
+    incident_date: datetime
+    incident_description: str
+    disputed_amount: float
+    currency: str
+    payment_method: str
+    merchant_name: str
+    filing_status: str
+    filing_date: Optional[datetime] = None
+    dispute_ref_number: Optional[str] = None
+    chargeback_filed: bool
+    chargeback_ref_number: Optional[str] = None
+    chargeback_status: Optional[str] = None
+    recovery_status: str
+    recovered_amount: float
+    recovery_date: Optional[datetime] = None
+    case_status: str
+    resolution_type: Optional[str] = None
+    resolution_date: Optional[datetime] = None
+    resolution_notes: Optional[str] = None
+    communication_logs: List[CommunicationLogResponse]
+    recovery_tracking: List[RecoveryTrackingResponse]
+    next_action_date: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RescueCaseListResponse(BaseModel):
+    items: List[dict]
+    total: int
+    open_cases: int
+    total_disputed_amount: float
+    total_recovered_amount: float
+
+
+class RescueCaseUpdateRequest(BaseModel):
+    case_status: Optional[str] = None
+    filing_status: Optional[str] = None
+    chargeback_filed: Optional[bool] = None
+    chargeback_ref_number: Optional[str] = None
+    resolution_type: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+
+class DisputeFilingRequest(BaseModel):
+    dispute_reason: str
+    evidence_ids: Optional[List[str]] = None
+    bank_details: Optional[dict] = None
+
+
+class DisputeFilingResponse(BaseModel):
+    case_id: str
+    filing_status: str
+    dispute_ref_number: str
+    filing_date: datetime
+    expected_resolution_date: datetime
+    next_steps: List[str]
+    confirmation_sent_to: str
+
+
+class CommunicationAddRequest(BaseModel):
+    communication_type: str  # email, sms, in_app, phone, letter
+    direction: str  # outgoing, incoming
+    message: str
+    recipient_type: str  # user, bank, merchant, support
+    external_ref: Optional[str] = None
+
+
+class CommunicationAddResponse(BaseModel):
+    id: str
+    rescue_case_id: str
+    communication_type: str
+    direction: str
+    status: str
+    sent_at: datetime
+
+
+class RecoveryAddRequest(BaseModel):
+    event_type: str  # refund_initiated, refund_processed, chargeback_won, partial_recovery, recovery_failed
+    recovery_amount: float
+    recovery_date: datetime
+    reference_number: str
+    bank_reference: Optional[str] = None
+
+
+class RecoveryAddResponse(BaseModel):
+    id: str
+    rescue_case_id: str
+    event_type: str
+    recovery_amount: float
+    recovery_date: datetime
+    status: str
+    created_at: datetime
+
+
+class RescueResolveRequest(BaseModel):
+    resolution_type: str  # refund, reversal, replacement, writeoff
+    resolution_notes: str
+    final_recovery_amount: float
+    closure_reason: Optional[str] = None
+
+
+class RescueResolveResponse(BaseModel):
+    case_id: str
+    case_status: str
+    resolution_type: str
+    recovery_status: str
+    total_recovered: float
+    resolution_date: datetime
+    closure_communication_sent: bool
