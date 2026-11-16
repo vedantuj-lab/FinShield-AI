@@ -781,6 +781,57 @@ class RescueCaseResponse(BaseModel):
         from_attributes = True
 
 
+# ==================== PHASE 8: AI ASSISTANT SCHEMAS ====================
+
+class ChatMessageCreate(BaseModel):
+    user_message: str
+    language: str = "english"
+
+
+class ChatMessageResponse(BaseModel):
+    id: str
+    user_message: str
+    assistant_response: str
+    detected_intent: Optional[str] = None
+    intent_confidence: float = 0.0
+    module_routed_to: Optional[str] = None
+    language: str
+    has_action: bool = False
+    action_type: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationSessionCreate(BaseModel):
+    title: str
+    language: str = "english"
+
+
+class ConversationSessionResponse(BaseModel):
+    id: str
+    title: str
+    language: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ConversationDetailResponse(BaseModel):
+    id: str
+    title: str
+    language: str
+    messages: List[ChatMessageResponse]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class RescueCaseListResponse(BaseModel):
     items: List[dict]
     total: int

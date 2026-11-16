@@ -515,7 +515,7 @@ class TimelineEvent(Base):
     # Data reference
     related_entity_id = Column(String, nullable=True)
     related_entity_type = Column(String, nullable=True)  # investigation, evidence, finding
-    metadata = Column(Text, nullable=True)  # JSON
+    event_metadata = Column(Text, nullable=True)  # JSON
 
 
 class CaseFind(Base):
@@ -746,6 +746,53 @@ Investigation.rescue_case = relationship("RescueCase", back_populates="investiga
 
 # Add back reference for Evidence case relationship
 Evidence.case = relationship("RescueCase", back_populates="evidence", foreign_keys=[Evidence.case_id])
+
+
+# ==================== PHASE 8: AI ASSISTANT ====================
+
+class ConversationSession(Base):
+    __tablename__ = "conversation_sessions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    language = Column(String, default="english")  # english, spanish, french, hindi
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = relationship("User", backref="conversation_sessions")
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(String, primary_key=True, index=True)
+    conversation_id = Column(String, ForeignKey("conversation_sessions.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    
+    # Message content
+    user_message = Column(Text, nullable=False)
+    assistant_response = Column(Text, nullable=False)
+    
+    # Intent and routing
+    detected_intent = Column(String, nullable=True)  # budget, investment, trading, tax, fraud, business
+    intent_confidence = Column(Float, default=0.0)
+    module_routed_to = Column(String, nullable=True)  # module name or None
+    
+    # Additional metadata
+    language = Column(String, default="english")
+    has_action = Column(Boolean, default=False)
+    action_type = Column(String, nullable=True)  # action performed based on intent
+    action_details = Column(Text, nullable=True)  # JSON with action details
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    conversation = relationship("ConversationSession", back_populates="messages")
+    user = relationship("User", backref="chat_messages")
 
 
 # ==================== PHASE 7: SMALL BUSINESS FINANCE ====================

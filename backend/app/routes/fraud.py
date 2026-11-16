@@ -21,7 +21,7 @@ from app.schemas import (
     RiskScoreRequest, RiskScoreResponse, InvestigationCreateFraud, InvestigationUpdateRequest,
     InvestigationsListResponse, FindingCreateRequest, CaseFindResponse, TimelineEventResponse,
     CheckpointValidationRequest, CheckpointValidationResponse, CheckpointConfirmRequest,
-    CheckpointConfirmResponse, ValidationRulesListResponse, FraudPatternsListResponse,
+    CheckpointConfirmResponse, CheckpointResponse, ValidationRulesListResponse, FraudPatternsListResponse,
     PatternTestRequest, PatternTestResponse, RescueCaseCreateRequest, RescueCaseResponse,
     RescueCaseListResponse, RescueCaseUpdateRequest, DisputeFilingRequest, DisputeFilingResponse,
     CommunicationAddRequest, CommunicationAddResponse, RecoveryAddRequest, RecoveryAddResponse,

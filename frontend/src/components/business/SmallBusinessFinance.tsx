@@ -1,11 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@radix-ui/themes';
 import GSTInvoiceForm from './GSTInvoiceForm';
 import IncomeExpenseTracker from './IncomeExpenseTracker';
 import CashFlowForecastChart from './CashFlowForecastChart';
@@ -66,7 +59,7 @@ const SmallBusinessFinance: React.FC = () => {
 
   return (
     <div className="small-business-finance">
-      <Container>
+      <div className="sbf-container">
         <div className="sbf-header">
           <h1>Small Business Finance</h1>
           <p>Manage invoices, track income/expenses, forecast cash flow, and calculate EMI</p>
@@ -93,30 +86,52 @@ const SmallBusinessFinance: React.FC = () => {
               <p>F.Y.: {businessProfile.financial_year}</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="sbf-tabs">
-              <TabsList className="sbf-tab-list">
-                <TabsTrigger value="invoices">GST Invoices</TabsTrigger>
-                <TabsTrigger value="income-expense">Income & Expense</TabsTrigger>
-                <TabsTrigger value="cash-flow">Cash Flow</TabsTrigger>
-                <TabsTrigger value="emi">EMI Plans</TabsTrigger>
-              </TabsList>
+            <div className="sbf-tabs">
+              <div className="sbf-tab-list">
+                <button 
+                  className={`tab-trigger ${activeTab === 'invoices' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('invoices')}
+                >
+                  GST Invoices
+                </button>
+                <button 
+                  className={`tab-trigger ${activeTab === 'income-expense' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('income-expense')}
+                >
+                  Income & Expense
+                </button>
+                <button 
+                  className={`tab-trigger ${activeTab === 'cash-flow' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('cash-flow')}
+                >
+                  Cash Flow
+                </button>
+                <button 
+                  className={`tab-trigger ${activeTab === 'emi' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('emi')}
+                >
+                  EMI Plans
+                </button>
+              </div>
 
-              <TabsContent value="invoices">
-                <GSTInvoiceForm businessProfileId={businessProfile.id} />
-              </TabsContent>
+              <div className="tab-content">
+                {activeTab === 'invoices' && (
+                  <GSTInvoiceForm businessProfileId={businessProfile.id} />
+                )}
 
-              <TabsContent value="income-expense">
-                <IncomeExpenseTracker businessProfileId={businessProfile.id} />
-              </TabsContent>
+                {activeTab === 'income-expense' && (
+                  <IncomeExpenseTracker businessProfileId={businessProfile.id} />
+                )}
 
-              <TabsContent value="cash-flow">
-                <CashFlowForecastChart businessProfileId={businessProfile.id} />
-              </TabsContent>
+                {activeTab === 'cash-flow' && (
+                  <CashFlowForecastChart businessProfileId={businessProfile.id} />
+                )}
 
-              <TabsContent value="emi">
-                <EMIPlanCalculator businessProfileId={businessProfile.id} />
-              </TabsContent>
-            </Tabs>
+                {activeTab === 'emi' && (
+                  <EMIPlanCalculator businessProfileId={businessProfile.id} />
+                )}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="sbf-no-profile">
@@ -126,7 +141,7 @@ const SmallBusinessFinance: React.FC = () => {
             </div>
           </div>
         )}
-      </Container>
+      </div>
     </div>
   );
 };

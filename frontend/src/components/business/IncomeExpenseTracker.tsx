@@ -184,7 +184,7 @@ const IncomeExpenseTracker: React.FC<Props> = ({ businessProfileId }) => {
     }
   };
 
-  const categories = formData.transaction_type === 'income' ? incomeCategories : expenseCategories;
+  const categories = (formData.transaction_type as string) === 'income' ? incomeCategories : expenseCategories;
 
   return (
     <div className="income-expense-tracker">
