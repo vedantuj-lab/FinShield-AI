@@ -420,6 +420,13 @@ async function startServer() {
         });
       }
 
+      if (user.role !== 'user') {
+        return res.status(403).json({
+          error:
+            'Administrator accounts cannot sign in through the Citizen portal. Please sign in with a Citizen account or switch to Admin Sign-In.',
+        });
+      }
+
       await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
       const token = createSessionToken({
@@ -567,8 +574,13 @@ async function startServer() {
     res.json({ loggedOut: true });
   });
 
-  // Sync Firebase Google user and return DB profile
+  // Sync Firebase Google user and return DB profile (strictly Citizen-only)
   app.post('/api/auth/firebase', requireAuth, async (req: AuthRequest, res) => {
+    if (req.dbUser?.role !== 'user') {
+      return res.status(403).json({
+        error: `Access denied. The Google account "${req.dbUser?.email || ''}" has Administrator privileges and cannot log in through the Citizen portal. Choose a Citizen Google account or switch to Admin Sign-In.`,
+      });
+    }
     res.json({ user: req.dbUser });
   });
 
@@ -2081,7 +2093,7 @@ async function startServer() {
           ipAddress: req.ip || '',
         });
         return res.status(403).json({
-          error: 'Access denied. This portal is restricted to authorized FINSHIELD AI administrators.',
+          error: 'Access denied. Citizen accounts cannot sign in through the Admin portal. Please use Citizen Sign-In.',
         });
       }
 
@@ -2894,6 +2906,65 @@ async function startServer() {
 
   // Vite middleware in dev, static serving in production
   if (process.env.NODE_ENV !== 'production') {
+    if (process.env.DISABLE_HMR === 'true') {
+      // Vite 8 still injects /@vite/client and throws an Unhandled Rejection on port 24678
+      // even when hmr: false is set via DISABLE_HMR=true. Serve the exact client exports
+      // with HMR socket disabled while preserving CSS injection and dynamic import helpers.
+      app.get('/@vite/client', (_req, res) => {
+        res.type('application/javascript').send(`
+const sheetsMap = new Map();
+let lastInsertedStyle;
+export function updateStyle(id, content) {
+  let style = sheetsMap.get(id);
+  if (!style) {
+    style = document.createElement("style");
+    style.setAttribute("type", "text/css");
+    style.setAttribute("data-vite-dev-id", id);
+    style.textContent = content;
+    if (!lastInsertedStyle) {
+      document.head.appendChild(style);
+      setTimeout(() => { lastInsertedStyle = undefined; }, 0);
+    } else {
+      lastInsertedStyle.insertAdjacentElement("afterend", style);
+    }
+    lastInsertedStyle = style;
+  } else if (style.textContent !== content) {
+    style.textContent = content;
+  }
+  sheetsMap.set(id, style);
+}
+export function removeStyle(id) {
+  const style = sheetsMap.get(id);
+  if (style) {
+    if (style.parentNode) style.parentNode.removeChild(style);
+    sheetsMap.delete(id);
+  }
+}
+export function createHotContext() {
+  const noop = () => {};
+  return {
+    data: {},
+    accept: noop,
+    acceptExports: noop,
+    dispose: noop,
+    prune: noop,
+    invalidate: noop,
+    decline: noop,
+    on: noop,
+    off: noop,
+    send: noop,
+  };
+}
+export function injectQuery(url, queryToInject) {
+  if (url[0] !== "." && url[0] !== "/") return url;
+  const pathname = url.replace(/[?#].*$/, "");
+  const { search, hash } = new URL(url, "http://vite.dev");
+  return \`\${pathname}?\${queryToInject}\${search ? "&" + search.slice(1) : ""}\${hash || ""}\`;
+}
+export class ErrorOverlay extends HTMLElement {}
+`);
+      });
+    }
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

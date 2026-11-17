@@ -128,31 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (skipFirebaseSyncRef.current) {
         return;
       }
-      if (fbUser) {
-        try {
-          const idToken = await fbUser.getIdToken();
-          if (mounted) persistToken(idToken);
-          const res = await fetch('/api/auth/firebase', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-            },
-          });
-          if (res.ok && mounted) {
-            const data = await res.json();
-            setUser(data.user);
-          } else if (mounted) {
-            persistToken(null);
-            setUser(null);
-          }
-        } catch (err) {
-          console.error('Firebase session sync error:', err);
-        }
-        if (mounted) setLoading(false);
-        return;
-      }
 
-      // Restore local fs1.* session token if present
+      // Restore explicit local/admin fs1.* session token first so it is never overwritten by Firebase client state
       let storedToken: string | null = null;
       try {
         storedToken = sessionStorage.getItem(TOKEN_STORAGE_KEY);
@@ -169,7 +146,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await res.json();
             setUser(data.user);
             persistToken(storedToken);
-          } else if (mounted) {
+            if (mounted) setLoading(false);
+            return;
+          }
+          if (mounted) {
             persistToken(null);
             setUser(null);
           }
@@ -179,10 +159,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
           }
         }
-      } else if (mounted) {
-        setUser(null);
       }
-      if (mounted) setLoading(false);
+
+      if (fbUser) {
+        try {
+          const idToken = await fbUser.getIdToken();
+          const res = await fetch('/api/auth/firebase', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          });
+          if (res.ok && mounted) {
+            const data = await res.json();
+            if (data.user?.role === 'user') {
+              persistToken(idToken);
+              setUser(data.user);
+            } else {
+              persistToken(null);
+              setUser(null);
+              await firebaseSignOut(auth).catch(() => {});
+            }
+          } else if (mounted) {
+            persistToken(null);
+            setUser(null);
+            if (res.status === 403) {
+              await firebaseSignOut(auth).catch(() => {});
+            }
+          }
+        } catch (err) {
+          console.error('Firebase session sync error:', err);
+        }
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      if (mounted) {
+        setUser(null);
+        setLoading(false);
+      }
     });
     return () => {
       mounted = false;
@@ -245,6 +260,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) throw new Error(data.error || 'Login failed');
+    if (data.user?.role !== 'user') {
+      persistToken(null);
+      setUser(null);
+      throw new Error(
+        'Administrator accounts cannot sign in through the Citizen portal. Use Admin Sign-In instead.'
+      );
+    }
     persistToken(data.token);
     setUser(data.user);
     return data.user;
@@ -257,6 +279,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) throw new Error(data.error || 'Administrator sign-in failed');
+    if (data.user?.role !== 'admin') {
+      persistToken(null);
+      setUser(null);
+      throw new Error('Citizen accounts cannot sign in through the Admin portal.');
+    }
     persistToken(data.token);
     setUser(data.user);
     return data.user;
@@ -321,19 +348,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (): Promise<AppUser> => {
-    const cred = await signInWithPopup(auth, googleAuthProvider);
-    const idToken = await cred.user.getIdToken();
-    persistToken(idToken);
-    const { res, data } = await fetchAuthJson('/api/auth/firebase', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${idToken}` },
-    });
-    if (!res.ok) {
+    skipFirebaseSyncRef.current = true;
+    try {
+      const cred = await signInWithPopup(auth, googleAuthProvider);
+      const idToken = await cred.user.getIdToken();
+      const chosenEmail = cred.user.email || 'this Google account';
+      const { res, data } = await fetchAuthJson('/api/auth/firebase', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      if (!res.ok || data.user?.role !== 'user') {
+        persistToken(null);
+        setUser(null);
+        await firebaseSignOut(auth).catch(() => {});
+        if (res.status === 403 || (data.user && data.user.role !== 'user')) {
+          throw new Error(
+            data.error ||
+              `Access denied. The Google account "${chosenEmail}" has Administrator privileges and cannot log in on the Citizen portal. Select a Citizen Google account or switch to Admin Sign-In.`
+          );
+        }
+        throw new Error(data.error || 'Google sign-in failed');
+      }
+      persistToken(idToken);
+      setUser(data.user);
+      return data.user;
+    } catch (err) {
       persistToken(null);
-      throw new Error(data.error || 'Google sign-in failed');
+      setUser(null);
+      if (auth.currentUser) {
+        await firebaseSignOut(auth).catch(() => {});
+      }
+      throw err;
+    } finally {
+      skipFirebaseSyncRef.current = false;
     }
-    setUser(data.user);
-    return data.user;
   };
 
   const loginAdminWithGoogle = async (): Promise<AppUser> => {
@@ -347,18 +395,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
-      if (!res.ok) {
+      if (!res.ok || data.user?.role !== 'admin') {
         persistToken(null);
         setUser(null);
-        await firebaseSignOut(auth);
-        if (res.status === 403) {
+        await firebaseSignOut(auth).catch(() => {});
+        if (res.status === 403 || (data.user && data.user.role !== 'admin')) {
           throw new Error(
             `Access denied. The Google account "${chosenEmail}" does not have administrator privileges. Select an authorized administrator account or sign in with Administrator Email and Password.`
           );
         }
         throw new Error(data.error || 'Administrator Google sign-in denied');
       }
-      persistToken(data.token || idToken);
+      // Keep admin session strictly in fs1.* token and clear Firebase client auth state
+      // so Admin Google sign-in never leaks into Citizen Firebase auth.
+      await firebaseSignOut(auth).catch(() => {});
+      persistToken(data.token);
       setUser(data.user);
       return data.user;
     } catch (err) {

@@ -62,7 +62,7 @@ export function RegisterPage() {
 }
 
 function UserAuthPage({ initialRegister }: { initialRegister: boolean }) {
-  const { user, loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth();
+  const { user, logout, loginWithGoogle, loginWithEmail, registerWithEmail } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -75,8 +75,8 @@ function UserAuthPage({ initialRegister }: { initialRegister: boolean }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user) {
-      navigate(user.role === 'admin' ? '/admin' : '/app', { replace: true });
+    if (user?.role === 'user') {
+      navigate('/app', { replace: true });
     }
   }, [user, navigate]);
 
@@ -84,8 +84,17 @@ function UserAuthPage({ initialRegister }: { initialRegister: boolean }) {
     setSubmitting(true);
     setError('');
     try {
+      if (user && user.role !== 'user') {
+        await logout();
+      }
       const signedIn = await loginWithGoogle();
-      navigate(signedIn.role === 'admin' ? '/admin' : '/app');
+      if (signedIn.role !== 'user') {
+        setError(
+          'Administrator accounts cannot sign in on the Citizen portal. Switch to Admin Sign-In or use a Citizen account.'
+        );
+        return;
+      }
+      navigate('/app');
     } catch (err: any) {
       setError(err.message || 'Google Sign-In failed.');
     } finally {
@@ -102,10 +111,19 @@ function UserAuthPage({ initialRegister }: { initialRegister: boolean }) {
     setSubmitting(true);
     setError('');
     try {
+      if (user && user.role !== 'user') {
+        await logout();
+      }
       const signedIn = isRegisterMode
         ? await registerWithEmail(name, email, password, preferredLanguage)
         : await loginWithEmail(email, password);
-      navigate(signedIn.role === 'admin' ? '/admin' : '/app');
+      if (signedIn.role !== 'user') {
+        setError(
+          'Administrator accounts cannot sign in on the Citizen portal. Switch to Admin Sign-In or use a Citizen account.'
+        );
+        return;
+      }
+      navigate('/app');
     } catch (err: any) {
       setError(err.message || 'Authentication failed.');
     } finally {
@@ -160,6 +178,22 @@ function UserAuthPage({ initialRegister }: { initialRegister: boolean }) {
               {t('authTabRegister')}
             </button>
           </div>
+
+          {user && user.role === 'admin' && (
+            <div className="rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 p-3 text-xs text-[#F59E0B] space-y-2">
+              <div>
+                You are currently signed in as an Administrator ({user.email}). Sign in with a
+                Citizen account below or sign out first.
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="font-semibold underline hover:text-[#FBBF24]"
+              >
+                Sign out of Admin session
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-lg border border-[#EF4444]/40 bg-[#EF4444]/10 p-3 text-xs text-[#EF4444]">
@@ -474,7 +508,7 @@ export function ForgotPasswordPage() {
 }
 
 export function AdminLoginPage() {
-  const { user, loginAdmin, loginAdminWithGoogle, bootstrapAdmin } = useAuth();
+  const { user, logout, loginAdmin, loginAdminWithGoogle, bootstrapAdmin } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -564,9 +598,18 @@ export function AdminLoginPage() {
           </div>
 
           {user && user.role !== 'admin' && (
-            <div className="rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 p-3 text-xs text-[#F59E0B]">
-              You are currently signed in with a standard user account ({user.email}). Sign in with
-              authorized administrator credentials below to open the Admin Governance Console.
+            <div className="rounded-lg border border-[#F59E0B]/40 bg-[#F59E0B]/10 p-3 text-xs text-[#F59E0B] space-y-2">
+              <div>
+                You are currently signed in with a Citizen account ({user.email}). Sign in with
+                authorized administrator credentials below to open the Admin Governance Console.
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="font-semibold underline hover:text-[#FBBF24]"
+              >
+                Sign out of Citizen session
+              </button>
             </div>
           )}
 
