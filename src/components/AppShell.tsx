@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
+  Bot,
+  Briefcase,
+  Calculator,
   FileText,
   GitBranch,
   History,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Menu,
+  PiggyBank,
   Search,
   Settings,
   ShieldAlert,
@@ -28,6 +33,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    const el = desktopNavRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem('finshield_sidebar_scroll');
+    if (saved) {
+      el.scrollTop = Number(saved) || 0;
+    }
+  }, [location.pathname]);
 
   const navLinks = [
     { to: '/app', label: t('navDashboard'), icon: LayoutDashboard, accent: 'text-[#14B8A6]' },
@@ -37,6 +52,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { to: '/app/risk', label: t('navRisk'), icon: ShieldAlert, accent: 'text-[#F97316]' },
     { to: '/app/payment-safety', label: t('navPaymentSafety'), icon: ShieldCheck, accent: 'text-[#10B981]' },
     { to: '/app/rescue', label: t('navRescue'), icon: AlertTriangle, accent: 'text-[#EF4444]', emergency: true },
+    { to: '/app/budgeting', label: 'Smart Budgeting', icon: PiggyBank, accent: 'text-[#14B8A6]' },
+    { to: '/app/investments', label: 'Investments & Portfolio', icon: Briefcase, accent: 'text-[#38BDF8]' },
+    { to: '/app/markets', label: 'Market & Paper Trading', icon: LineChart, accent: 'text-[#F59E0B]' },
+    { to: '/app/tax-business', label: 'Tax & Small Business', icon: Calculator, accent: 'text-[#10B981]' },
+    { to: '/app/assistant', label: 'AI Finance Assistant', icon: Bot, accent: 'text-[#818CF8]' },
     { to: '/app/reports', label: t('navReports'), icon: FileText, accent: 'text-[#F43F5E]' },
     { to: '/app/history', label: t('navHistory'), icon: History, accent: 'text-[#38BDF8]' },
     { to: '/app/trusted-circle', label: t('navTrustedCircle'), icon: Users, accent: 'text-[#818CF8]' },
@@ -65,7 +85,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1" aria-label="Application">
+        <nav
+          ref={desktopNavRef}
+          onScroll={(e) => {
+            sessionStorage.setItem('finshield_sidebar_scroll', String(e.currentTarget.scrollTop));
+          }}
+          className="flex-1 overflow-y-auto px-3 py-4 space-y-1"
+          aria-label="Application"
+        >
           {navLinks.map((item) => {
             const Icon = item.icon;
             const active =

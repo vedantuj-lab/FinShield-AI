@@ -120,7 +120,9 @@ function languageInstruction(lang: string): string {
   return 'Write all explanations, summaries, and recommended_actions in clear, accessible English suitable for ordinary smartphone users, preserving exact quoted evidence strings verbatim.';
 }
 
-async function retryGemini<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+const TEXT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-4-hydrogen'];
+
+async function retryGemini<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
   let lastErr: unknown;
   for (let i = 0; i <= retries; i++) {
     try {
@@ -132,11 +134,184 @@ async function retryGemini<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
         throw err;
       }
       if (i < retries) {
-        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+        await new Promise((r) => setTimeout(r, 400 * (i + 1)));
       }
     }
   }
   throw lastErr;
+}
+
+async function generateWithFallback(
+  params: Omit<Parameters<typeof ai.models.generateContent>[0], 'model'>
+) {
+  let lastErr: unknown;
+  for (const model of TEXT_MODELS) {
+    try {
+      return await retryGemini(() => ai.models.generateContent({ ...params, model }), 1);
+    } catch (err: any) {
+      lastErr = err;
+      const msg = String(err?.message || '');
+      if (msg.includes('API_KEY_INVALID') || msg.includes('PERMISSION_DENIED')) {
+        throw err;
+      }
+    }
+  }
+  throw lastErr;
+}
+
+function localFallbackEvidenceAnalysis(params: {
+  evidenceType: string;
+  rawText?: string;
+  urlContextNote?: string;
+}): EvidenceAnalysisOutput {
+  const text = (params.rawText || '').trim();
+  const lower = text.toLowerCase();
+  const indicators: EvidenceAnalysisOutput['risk_indicators'] = [];
+
+  if (/urgent|immediately|within \d+ (min|hour)|blocked|suspended|kyc/.test(lower)) {
+    indicators.push({
+      type: 'urgent_payment_demand',
+      severity: 'high',
+      evidence: text.slice(0, 140) || 'Uploaded visual evidence',
+      explanation: 'Uses time pressure or account-suspension language commonly seen in phishing/KYC scams.',
+    });
+  }
+  if (/otp|pin|cvv|password|verify/.test(lower)) {
+    indicators.push({
+      type: 'otp_or_pin_request',
+      severity: 'critical',
+      evidence: text.slice(0, 140) || 'Uploaded visual evidence',
+      explanation: 'Requests sensitive verification credentials or immediate verification action.',
+    });
+  }
+  if (/bank|rbi|police|cyber|tax|department|officer/.test(lower)) {
+    indicators.push({
+      type: 'authority_impersonation',
+      severity: 'high',
+      evidence: text.slice(0, 140) || 'Uploaded visual evidence',
+      explanation: 'References an institutional or banking authority to pressure compliance.',
+    });
+  }
+  if (/http:\/\/|https:\/\/|bit\.ly|tinyurl|click here/.test(lower) || params.urlContextNote) {
+    indicators.push({
+      type: 'suspicious_external_link',
+      severity: 'moderate',
+      evidence: params.urlContextNote || text.slice(0, 140),
+      explanation: 'Contains an external link that should be independently verified via official channels.',
+    });
+  }
+
+  return {
+    communication_type: params.evidenceType || 'message',
+    extracted_text: text || 'Evidence file attached (analyzed with local safety heuristics).',
+    summary:
+      indicators.length > 0
+        ? `Detected ${indicators.length} potential scam/manipulation signal(s). Verify independently via your bank's official app or helpline before taking any action.`
+        : 'Evidence recorded. Verify any payment or KYC request independently via official channels.',
+    claimed_entity: '',
+    payment_instructions: '',
+    amounts_mentioned: text.match(/(?:rs\.?|inr|₹)\s?[\d,]+(?:\.\d+)?/gi) || [],
+    upi_ids_mentioned: text.match(/[a-zA-Z0-9._-]+@[a-zA-Z]{2,}/g) || [],
+    phone_numbers_mentioned: text.match(/(?:\+91[\s-]?)?[6-9]\d{9}/g) || [],
+    urls_mentioned: text.match(/https?:\/\/[^\s]+/gi) || [],
+    legitimate_context_likely: indicators.length === 0,
+    risk_indicators: indicators,
+    potential_risks: indicators.map((i) => i.explanation),
+    recommended_actions: [
+      'Do not share OTP, UPI PIN, CVV, or remote-access codes.',
+      'Verify the claim directly using the official number on the back of your bank card.',
+      'If money was lost, call 1930 or report at cybercrime.gov.in immediately.',
+    ],
+  };
+}
+
+function localFallbackManipulation(textContent: string): ManipulationOutput {
+  const lower = textContent.toLowerCase();
+  const hasUrgency = /urgent|immediately|within \d+|now|today|expire|last chance|10 minutes|24 hours/.test(lower);
+  const hasFear = /blocked|suspended|freeze|arrest|jail|legal|penalty|police|court|terminated/.test(lower);
+  const hasAuthority = /bank|rbi|verification department|officer|customs|cbi|income tax|support team/.test(lower);
+  const hasSecrecy = /do not tell|secret|confidential|don't share with anyone|private/.test(lower);
+  const hasFinancial = /payment|pay|transfer|upi|fee|deposit|refund|kyc|account/.test(lower);
+  const snippet = textContent.trim().slice(0, 160);
+
+  return {
+    overall_assessment:
+      hasUrgency || hasFear || hasAuthority
+        ? 'High social-engineering pressure detected: this message combines urgency, authority, or fear tactics commonly used to rush victims into unsafe actions.'
+        : 'Low manipulation pressure detected. Always verify payment requests independently.',
+    suspected_vs_proven_note:
+      'These indicators highlight suspected psychological manipulation tactics and do not by themselves prove criminal intent. Verify via official channels.',
+    core_cards: [
+      {
+        dimension: 'urgency',
+        status: hasUrgency ? 'Detected' : 'Not Detected',
+        severity: hasUrgency ? 'high' : 'none',
+        supporting_evidence: hasUrgency ? snippet : '',
+        explanation: hasUrgency
+          ? 'Artificial deadline or immediate-action pressure is used to prevent calm verification.'
+          : 'No strong time-pressure phrasing detected.',
+      },
+      {
+        dimension: 'fear',
+        status: hasFear ? 'Detected' : 'Not Detected',
+        severity: hasFear ? 'high' : 'none',
+        supporting_evidence: hasFear ? snippet : '',
+        explanation: hasFear
+          ? 'Threatens account blocking, suspension, or legal consequences to trigger panic.'
+          : 'No explicit fear or threat language detected.',
+      },
+      {
+        dimension: 'authority_impersonation',
+        status: hasAuthority ? 'Detected' : 'Not Detected',
+        severity: hasAuthority ? 'high' : 'none',
+        supporting_evidence: hasAuthority ? snippet : '',
+        explanation: hasAuthority
+          ? 'Invokes a bank, verification department, or official institution to demand compliance.'
+          : 'No institutional impersonation detected.',
+      },
+      {
+        dimension: 'secrecy',
+        status: hasSecrecy ? 'Detected' : 'Not Detected',
+        severity: hasSecrecy ? 'moderate' : 'none',
+        supporting_evidence: hasSecrecy ? snippet : '',
+        explanation: hasSecrecy
+          ? 'Discourages discussing the request with family or official support.'
+          : 'No secrecy demands detected.',
+      },
+      {
+        dimension: 'emotional_manipulation',
+        status: hasFear && hasUrgency ? 'Possible' : 'Not Detected',
+        severity: hasFear && hasUrgency ? 'moderate' : 'none',
+        supporting_evidence: hasFear && hasUrgency ? snippet : '',
+        explanation: 'Evaluates emotional stress or guilt triggers.',
+      },
+      {
+        dimension: 'financial_pressure',
+        status: hasFinancial ? 'Detected' : 'Not Detected',
+        severity: hasFinancial ? 'high' : 'none',
+        supporting_evidence: hasFinancial ? snippet : '',
+        explanation: hasFinancial
+          ? 'Pushes for an immediate payment, transfer, or account verification action.'
+          : 'No direct financial pressure detected.',
+      },
+    ],
+    extended_signals: [
+      {
+        dimension: 'threats',
+        detected: hasFear,
+        severity: hasFear ? 'high' : 'none',
+        supporting_evidence: hasFear ? snippet : '',
+        explanation: hasFear ? 'Contains threat of account suspension or legal action.' : 'None detected.',
+      },
+      {
+        dimension: 'suspicious_payment_instructions',
+        detected: hasFinancial && (hasUrgency || hasFear),
+        severity: hasFinancial && (hasUrgency || hasFear) ? 'high' : 'none',
+        supporting_evidence: hasFinancial ? snippet : '',
+        explanation: 'Urgent payment or verification demand.',
+      },
+    ],
+  };
 }
 
 export async function analyzeEvidenceWithGemini(params: {
@@ -181,9 +356,8 @@ export async function analyzeEvidenceWithGemini(params: {
 
   parts.push({ text: promptText });
 
-  const response = await retryGemini(() =>
-    ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+  try {
+    const response = await generateWithFallback({
       contents: { parts },
       config: {
         systemInstruction,
@@ -231,11 +405,14 @@ export async function analyzeEvidenceWithGemini(params: {
           ],
         },
       },
-    })
-  );
+    });
 
-  const parsed = JSON.parse((response.text ?? '{}').trim());
-  return EvidenceAnalysisZod.parse(parsed);
+    const parsed = JSON.parse((response.text ?? '{}').trim());
+    return EvidenceAnalysisZod.parse(parsed);
+  } catch (err) {
+    console.warn('Gemini evidence analysis fallback activated:', (err as any)?.message);
+    return localFallbackEvidenceAnalysis(params);
+  }
 }
 
 export async function analyzeManipulationWithGemini(
@@ -252,9 +429,8 @@ export async function analyzeManipulationWithGemini(
     languageInstruction(language),
   ].join(' ');
 
-  const response = await retryGemini(() =>
-    ai.models.generateContent({
-      model: 'gemini-4-hydrogen',
+  try {
+    const response = await generateWithFallback({
       contents: `<UNTRUSTED_EVIDENCE_DATA>\n${textContent}\n</UNTRUSTED_EVIDENCE_DATA>`,
       config: {
         systemInstruction,
@@ -335,11 +511,14 @@ export async function analyzeManipulationWithGemini(
           required: ['overall_assessment', 'suspected_vs_proven_note', 'core_cards', 'extended_signals'],
         },
       },
-    })
-  );
+    });
 
-  const parsed = JSON.parse((response.text ?? '{}').trim());
-  return ManipulationZod.parse(parsed);
+    const parsed = JSON.parse((response.text ?? '{}').trim());
+    return ManipulationZod.parse(parsed);
+  } catch (err) {
+    console.warn('Gemini manipulation fallback activated:', (err as any)?.message);
+    return localFallbackManipulation(textContent);
+  }
 }
 
 export async function reconstructScamStoryWithGemini(
@@ -523,3 +702,45 @@ export async function generateSafetySpeechWithGemini(
     mimeType: 'audio/wav',
   };
 }
+
+export async function askFinancialAssistantWithGemini(params: {
+  question: string;
+  language: string;
+  userContextSummary?: string;
+}): Promise<{ answer: string; disclaimer: string }> {
+  const systemPrompt = `You are the FINSHIELD AI Financial Education & Safety Assistant for Indian digital-payment and personal-finance users.
+Rules:
+1. Answer questions clearly about budgeting, spending, investments (SIP, mutual funds, FDs, equity, debt), Indian taxation (Old vs New Regime), market education, GST, loans/EMI, and financial scam detection.
+2. NEVER guarantee investment returns, NEVER invent live stock prices or company filings, NEVER claim to file taxes or block/reverse bank transactions, and NEVER ask for OTPs, UPI PINs, CVVs, or banking passwords.
+3. Clearly distinguish factual saved user figures (only if provided below) from general educational explanations and assumptions.
+4. ${languageInstruction(params.language)}`;
+
+  const promptBody = params.userContextSummary
+    ? `USER-AUTHORISED SAVED FINANCIAL CONTEXT:\n${params.userContextSummary}\n\nUSER QUESTION:\n<UNTRUSTED_USER_QUESTION>\n${params.question}\n</UNTRUSTED_USER_QUESTION>`
+    : `USER QUESTION:\n<UNTRUSTED_USER_QUESTION>\n${params.question}\n</UNTRUSTED_USER_QUESTION>`;
+
+  try {
+    const response = await generateWithFallback({
+      contents: [{ role: 'user', parts: [{ text: promptBody }] }],
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.3,
+      },
+    });
+
+    return {
+      answer: (response.text ?? '').trim() || 'Hello! How can I help you with budgeting, investments, Indian taxes, or financial scam safety today?',
+      disclaimer:
+        'Educational guidance only — not SEBI-registered investment advice, formal tax filing, or legal advice. FINSHIELD AI never guarantees returns or accesses live bank accounts.',
+    };
+  } catch (err) {
+    console.warn('Gemini assistant fallback activated:', (err as any)?.message);
+    return {
+      answer:
+        'Hello! I am the FINSHIELD AI Financial & Safety Assistant. You can ask me about your demo budget, SIP/index fund basics, FY 2025-26 Old vs. New Tax Regime, GST invoices, or how to spot UPI/KYC scams.',
+      disclaimer:
+        'Educational guidance only — not SEBI-registered investment advice, formal tax filing, or legal advice. FINSHIELD AI never guarantees returns or accesses live bank accounts.',
+    };
+  }
+}
+

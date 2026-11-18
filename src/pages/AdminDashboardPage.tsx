@@ -29,6 +29,9 @@ import { useAuth } from '../context/AuthContext';
 type AdminTab =
   | 'overview'
   | 'users'
+  | 'investigations'
+  | 'finance'
+  | 'model-config'
   | 'feedback'
   | 'rules'
   | 'education'
@@ -98,20 +101,36 @@ export function AdminDashboardPage() {
   const [aiLogs, setAiLogs] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
+  // Live Citizen Sync: Investigations, Evidence, Financial Modules, Model Config
+  const [adminInvestigations, setAdminInvestigations] = useState<any[]>([]);
+  const [adminEvidence, setAdminEvidence] = useState<any[]>([]);
+  const [financeSummary, setFinanceSummary] = useState<any>(null);
+  const [modelConfigs, setModelConfigs] = useState<any[]>([]);
+  const [modelForm, setModelForm] = useState({
+    configKey: 'risk_high_threshold',
+    configValue: '70',
+    description: 'Minimum risk score (0-100) classified as High Risk',
+  });
+
   const loadAllAdminData = async () => {
     setLoading(true);
     setError('');
     try {
-      const [ovRes, usrRes, fbRes, rlRes, edRes, spRes, aiRes, auRes] = await Promise.all([
-        apiFetch('/api/admin/overview'),
-        apiFetch(`/api/admin/users?q=${encodeURIComponent(userSearch)}&status=${userStatusFilter}`),
-        apiFetch(`/api/admin/feedback?status=${feedbackFilter}`),
-        apiFetch('/api/admin/scam-rules'),
-        apiFetch('/api/admin/education'),
-        apiFetch(`/api/admin/support?status=${supportFilter}`),
-        apiFetch('/api/admin/ai-logs'),
-        apiFetch('/api/admin/audit-logs'),
-      ]);
+      const [ovRes, usrRes, fbRes, rlRes, edRes, spRes, aiRes, auRes, invRes, evRes, finRes, mcRes] =
+        await Promise.all([
+          apiFetch('/api/admin/overview'),
+          apiFetch(`/api/admin/users?q=${encodeURIComponent(userSearch)}&status=${userStatusFilter}`),
+          apiFetch(`/api/admin/feedback?status=${feedbackFilter}`),
+          apiFetch('/api/admin/scam-rules'),
+          apiFetch('/api/admin/education'),
+          apiFetch(`/api/admin/support?status=${supportFilter}`),
+          apiFetch('/api/admin/ai-logs'),
+          apiFetch('/api/admin/audit-logs'),
+          apiFetch('/api/admin/investigations'),
+          apiFetch('/api/admin/evidence'),
+          apiFetch('/api/admin/finance-summary'),
+          apiFetch('/api/admin/model-config'),
+        ]);
 
       if (ovRes.status === 403 || ovRes.status === 401) {
         navigate('/admin/login', { replace: true });
@@ -126,11 +145,33 @@ export function AdminDashboardPage() {
       if (spRes.ok) setSupportList((await spRes.json()).tickets || []);
       if (aiRes.ok) setAiLogs((await aiRes.json()).logs || []);
       if (auRes.ok) setAuditLogs((await auRes.json()).logs || []);
+      if (invRes.ok) setAdminInvestigations((await invRes.json()).investigations || []);
+      if (evRes.ok) setAdminEvidence((await evRes.json()).evidence || []);
+      if (finRes.ok) setFinanceSummary(await finRes.json());
+      if (mcRes.ok) setModelConfigs((await mcRes.json()).configs || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load administrator dashboard.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveModelConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setBanner('');
+    const res = await apiFetch('/api/admin/model-config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(modelForm),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error || 'Could not save model configuration.');
+      return;
+    }
+    setBanner(`Saved versioned model config "${modelForm.configKey}".`);
+    await loadAllAdminData();
   };
 
   useEffect(() => {
@@ -347,6 +388,9 @@ export function AdminDashboardPage() {
       icon: Flag,
       badge: overview?.metrics?.openFeedback,
     },
+    { id: 'investigations', label: 'Investigations & Evidence', icon: Search, badge: adminInvestigations.length },
+    { id: 'finance', label: 'Financial Modules', icon: Database },
+    { id: 'model-config', label: 'Model Configuration', icon: Server },
     { id: 'rules', label: 'Scam Rules & Categories', icon: Sliders },
     { id: 'education', label: 'Safety Education', icon: BookOpen },
     {
@@ -1443,6 +1487,199 @@ export function AdminDashboardPage() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* LIVE CITIZEN INVESTIGATIONS & EVIDENCE */}
+          {activeTab === 'investigations' && (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-[#243040] bg-[#131A22] overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-[#243040] font-display text-sm font-semibold text-[#38BDF8]">
+                  Live Citizen Investigations (Shared PostgreSQL)
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#1B2430] text-[#94A3B8]">
+                      <tr>
+                        <th className="px-4 py-2.5">ID</th>
+                        <th className="px-4 py-2.5">Title</th>
+                        <th className="px-4 py-2.5">Citizen</th>
+                        <th className="px-4 py-2.5">Category</th>
+                        <th className="px-4 py-2.5">Risk</th>
+                        <th className="px-4 py-2.5">Updated</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#243040]">
+                      {adminInvestigations.map((inv) => (
+                        <tr key={inv.id}>
+                          <td className="px-4 py-2 font-mono text-[#94A3B8]">#{inv.id}</td>
+                          <td className="px-4 py-2 text-[#F3F6F9] font-medium">{inv.title}</td>
+                          <td className="px-4 py-2 text-[#94A3B8]">{inv.userEmail || `User #${inv.userId}`}</td>
+                          <td className="px-4 py-2 text-[#38BDF8]">{inv.scamCategory || 'General'}</td>
+                          <td className="px-4 py-2 font-mono font-bold text-[#F59E0B]">{inv.riskScore ?? 0}/100</td>
+                          <td className="px-4 py-2 text-[#94A3B8]">
+                            {inv.updatedAt ? new Date(inv.updatedAt).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                      {adminInvestigations.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-4 py-6 text-center text-[#94A3B8]">
+                            No citizen investigations recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-[#243040] bg-[#131A22] overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-[#243040] font-display text-sm font-semibold text-[#14B8A6]">
+                  Recent Evidence Uploads Metadata ({adminEvidence.length})
+                </div>
+                <div className="overflow-x-auto max-h-72">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-[#1B2430] text-[#94A3B8]">
+                      <tr>
+                        <th className="px-4 py-2.5">Evidence ID</th>
+                        <th className="px-4 py-2.5">Case ID</th>
+                        <th className="px-4 py-2.5">Type</th>
+                        <th className="px-4 py-2.5">Title</th>
+                        <th className="px-4 py-2.5">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#243040]">
+                      {adminEvidence.map((ev) => (
+                        <tr key={ev.id}>
+                          <td className="px-4 py-2 font-mono text-[#94A3B8]">#{ev.id}</td>
+                          <td className="px-4 py-2 font-mono text-[#38BDF8]">#{ev.investigationId}</td>
+                          <td className="px-4 py-2 text-[#F59E0B]">{ev.type}</td>
+                          <td className="px-4 py-2 text-[#F3F6F9]">{ev.title}</td>
+                          <td className="px-4 py-2 text-[#94A3B8]">
+                            {ev.createdAt ? new Date(ev.createdAt).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                      {adminEvidence.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-[#94A3B8]">
+                            No evidence metadata recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AGGREGATED FINANCIAL MODULES TELEMETRY */}
+          {activeTab === 'finance' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  ['Financial Transactions', financeSummary?.counts?.transactions ?? 0, 'text-[#14B8A6]'],
+                  ['Category Budgets', financeSummary?.counts?.budgets ?? 0, 'text-[#38BDF8]'],
+                  ['Portfolio Holdings', financeSummary?.counts?.portfolioHoldings ?? 0, 'text-[#818CF8]'],
+                  ['Paper Trades', financeSummary?.counts?.paperTrades ?? 0, 'text-[#F59E0B]'],
+                  ['Tax Calculations', financeSummary?.counts?.taxCalculations ?? 0, 'text-[#10B981]'],
+                  ['GST Invoices', financeSummary?.counts?.businessInvoices ?? 0, 'text-[#38BDF8]'],
+                  ['Business Cash Flow', financeSummary?.counts?.businessCashflow ?? 0, 'text-[#F97316]'],
+                ].map(([label, val, color]) => (
+                  <div key={String(label)} className="rounded-xl border border-[#243040] bg-[#131A22] p-4">
+                    <div className="text-xs text-[#94A3B8]">{label}</div>
+                    <div className={`font-mono text-2xl font-bold mt-1 ${color}`}>{val}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-[#94A3B8]">
+                Aggregated counts reflect live Citizen activity across Budgeting, Investments, Paper Trading, Tax, and Small Business tables in Cloud SQL PostgreSQL. Individual private financial entries remain user-isolated.
+              </p>
+            </div>
+          )}
+
+          {/* VERSIONED MODEL CONFIGURATION */}
+          {activeTab === 'model-config' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <form
+                onSubmit={handleSaveModelConfig}
+                className="lg:col-span-5 rounded-xl border border-[#243040] bg-[#131A22] p-5 space-y-4 h-fit"
+              >
+                <h2 className="font-display text-base font-semibold text-[#F3F6F9]">
+                  Update AI / Risk Model Configuration
+                </h2>
+                <div>
+                  <label htmlFor="mc-key" className="block text-xs text-[#94A3B8] mb-1">
+                    Configuration Key
+                  </label>
+                  <input
+                    id="mc-key"
+                    name="configKey"
+                    required
+                    value={modelForm.configKey}
+                    onChange={(e) => setModelForm({ ...modelForm, configKey: e.target.value })}
+                    className="w-full rounded-lg border border-[#243040] bg-[#0D1218] px-3 py-2 text-sm text-[#F3F6F9]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="mc-val" className="block text-xs text-[#94A3B8] mb-1">
+                    Value
+                  </label>
+                  <input
+                    id="mc-val"
+                    name="configValue"
+                    required
+                    value={modelForm.configValue}
+                    onChange={(e) => setModelForm({ ...modelForm, configValue: e.target.value })}
+                    className="w-full rounded-lg border border-[#243040] bg-[#0D1218] px-3 py-2 text-sm text-[#F3F6F9]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="mc-desc" className="block text-xs text-[#94A3B8] mb-1">
+                    Description / Change Note
+                  </label>
+                  <input
+                    id="mc-desc"
+                    name="description"
+                    value={modelForm.description}
+                    onChange={(e) => setModelForm({ ...modelForm, description: e.target.value })}
+                    className="w-full rounded-lg border border-[#243040] bg-[#0D1218] px-3 py-2 text-sm text-[#F3F6F9]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full rounded-lg bg-[#F59E0B] px-4 py-2.5 text-sm font-semibold text-[#0D1218] hover:bg-[#FBBF24]"
+                >
+                  Save Versioned Configuration
+                </button>
+              </form>
+
+              <div className="lg:col-span-7 rounded-xl border border-[#243040] bg-[#131A22] p-5">
+                <h2 className="font-display text-base font-semibold text-[#F3F6F9] mb-4">
+                  Active &amp; Historical Model Configurations
+                </h2>
+                <div className="space-y-2.5 text-xs">
+                  {modelConfigs.map((cfg) => (
+                    <div
+                      key={cfg.id}
+                      className="rounded-lg bg-[#0D1218] border border-[#243040] p-3 flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="font-mono font-semibold text-[#F59E0B]">
+                          {cfg.configKey} <span className="text-[#94A3B8]">v{cfg.version}</span>
+                        </div>
+                        <div className="text-[#94A3B8]">{cfg.description}</div>
+                      </div>
+                      <div className="font-mono text-[#14B8A6] font-bold">{cfg.configValue}</div>
+                    </div>
+                  ))}
+                  {modelConfigs.length === 0 && (
+                    <p className="text-xs text-[#94A3B8]">No custom model configurations saved yet.</p>
+                  )}
                 </div>
               </div>
             </div>

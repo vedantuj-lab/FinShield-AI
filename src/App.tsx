@@ -32,6 +32,11 @@ import {
   PrivacyDataPage,
   ProfilePage,
 } from './pages/SettingsPages';
+import { BudgetingPage } from './pages/BudgetingPage';
+import { InvestmentsPage } from './pages/InvestmentsPage';
+import { MarketTradingPage } from './pages/MarketTradingPage';
+import { TaxBusinessPage } from './pages/TaxBusinessPage';
+import { AiAssistantPage } from './pages/AiAssistantPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -240,6 +245,46 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <PrivacyDataPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/budgeting"
+              element={
+                <ProtectedRoute>
+                  <BudgetingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/investments"
+              element={
+                <ProtectedRoute>
+                  <InvestmentsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/markets"
+              element={
+                <ProtectedRoute>
+                  <MarketTradingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/tax-business"
+              element={
+                <ProtectedRoute>
+                  <TaxBusinessPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/app/assistant"
+              element={
+                <ProtectedRoute>
+                  <AiAssistantPage />
                 </ProtectedRoute>
               }
             />

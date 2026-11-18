@@ -58,6 +58,7 @@ import {
   evaluatePaymentSafety,
   redactSensitiveText,
 } from './server/riskEngine.ts';
+import { registerFinanceRoutes } from './server/financeRoutes.ts';
 import { SYNTHETIC_DEMO_CASE, SYNTHETIC_SAMPLE_SCENARIOS } from './server/syntheticScenarios.ts';
 import { runSyntheticEvaluationSuite } from './server/evaluationRunner.ts';
 
@@ -576,6 +577,13 @@ async function startServer() {
 
   // Sync Firebase Google user and return DB profile (strictly Citizen-only)
   app.post('/api/auth/firebase', requireAuth, async (req: AuthRequest, res) => {
+    const allowedCitizenEmail = 'vedantuj@gmail.com';
+    const userEmail = (req.dbUser?.email || '').toLowerCase().trim();
+    if (userEmail !== allowedCitizenEmail) {
+      return res.status(403).json({
+        error: `Access denied. Citizen Google Sign-In is restricted to ${allowedCitizenEmail}.`,
+      });
+    }
     if (req.dbUser?.role !== 'user') {
       return res.status(403).json({
         error: `Access denied. The Google account "${req.dbUser?.email || ''}" has Administrator privileges and cannot log in through the Citizen portal. Choose a Citizen Google account or switch to Admin Sign-In.`,
@@ -2150,6 +2158,12 @@ async function startServer() {
       if (!email) {
         return res.status(400).json({ error: 'Verified Google account has no email address.' });
       }
+      const allowedAdminEmail = 'v15742264@gmail.com';
+      if (email !== allowedAdminEmail) {
+        return res.status(403).json({
+          error: `Access denied. Admin Google Sign-In is restricted to ${allowedAdminEmail}.`,
+        });
+      }
 
       let user = await findUserByUid(decoded.uid);
       if (!user) {
@@ -2892,6 +2906,9 @@ async function startServer() {
       res.status(500).json({ error: 'Failed to load audit logs.' });
     }
   });
+
+  // Register Financial Intelligence, Paper Trading, Tax, Business, AI Assistant, and Admin Sync routes
+  registerFinanceRoutes(app);
 
   // Error handler for Multer upload errors
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {

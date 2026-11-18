@@ -377,6 +377,159 @@ export const adminAuditLogs = pgTable(
   (table) => [index('idx_admin_audit_logs_created_at').on(table.createdAt)]
 );
 
+export const financialTransactions = pgTable(
+  'financial_transactions',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    transactionDate: text('transaction_date').notNull(),
+    description: text('description').notNull(),
+    category: text('category').notNull().default('Other'),
+    amount: integer('amount').notNull(),
+    type: text('type').notNull().default('expense'),
+    isRecurring: boolean('is_recurring').notNull().default(false),
+    source: text('source').notNull().default('manual'),
+    isSyntheticDemo: boolean('is_synthetic_demo').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_fin_tx_user_id').on(table.userId)]
+);
+
+export const budgets = pgTable(
+  'budgets',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    month: text('month').notNull(),
+    category: text('category').notNull(),
+    limitAmount: integer('limit_amount').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_budgets_user_id').on(table.userId)]
+);
+
+export const portfolioHoldings = pgTable(
+  'portfolio_holdings',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    symbol: text('symbol').notNull(),
+    assetName: text('asset_name').notNull(),
+    category: text('category').notNull(),
+    quantity: integer('quantity').notNull(),
+    avgPurchasePrice: integer('avg_purchase_price').notNull(),
+    referencePrice: integer('reference_price').notNull(),
+    priceDate: text('price_date').notNull(),
+    priceSource: text('price_source').notNull().default('SYNTHETIC DEMONSTRATION DATA'),
+    isSyntheticDemo: boolean('is_synthetic_demo').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_portfolio_user_id').on(table.userId)]
+);
+
+export const paperTrades = pgTable(
+  'paper_trades',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    symbol: text('symbol').notNull(),
+    side: text('side').notNull(),
+    quantity: integer('quantity').notNull(),
+    price: integer('price').notNull(),
+    stopLoss: integer('stop_loss'),
+    takeProfit: integer('take_profit'),
+    strategyNote: text('strategy_note').notNull().default(''),
+    realizedPnl: integer('realized_pnl').notNull().default(0),
+    isSimulated: boolean('is_simulated').notNull().default(true),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_paper_trades_user_id').on(table.userId)]
+);
+
+export const taxCalculations = pgTable(
+  'tax_calculations',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    taxYear: text('tax_year').notNull().default('FY 2025-26'),
+    grossIncome: integer('gross_income').notNull(),
+    deductionsJson: jsonb('deductions_json').$type<Record<string, number>>().notNull().default({}),
+    oldRegimeTax: integer('old_regime_tax').notNull(),
+    newRegimeTax: integer('new_regime_tax').notNull(),
+    recommendedRegime: text('recommended_regime').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_tax_calc_user_id').on(table.userId)]
+);
+
+export const businessInvoices = pgTable(
+  'business_invoices',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    invoiceNumber: text('invoice_number').notNull(),
+    customerName: text('customer_name').notNull(),
+    customerGstin: text('customer_gstin').notNull().default(''),
+    itemsJson: jsonb('items_json')
+      .$type<Array<{ description: string; qty: number; rate: number }>>()
+      .notNull()
+      .default([]),
+    subtotal: integer('subtotal').notNull(),
+    gstRate: integer('gst_rate').notNull().default(18),
+    gstAmount: integer('gst_amount').notNull(),
+    totalAmount: integer('total_amount').notNull(),
+    status: text('status').notNull().default('unpaid'),
+    dueDate: text('due_date').notNull(),
+    isSyntheticDemo: boolean('is_synthetic_demo').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_biz_invoices_user_id').on(table.userId)]
+);
+
+export const businessCashflow = pgTable(
+  'business_cashflow',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    entryDate: text('entry_date').notNull(),
+    type: text('type').notNull().default('income'),
+    category: text('category').notNull(),
+    description: text('description').notNull(),
+    amount: integer('amount').notNull(),
+    isSyntheticDemo: boolean('is_synthetic_demo').notNull().default(false),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('idx_biz_cashflow_user_id').on(table.userId)]
+);
+
+export const modelConfigurations = pgTable('model_configurations', {
+  id: serial('id').primaryKey(),
+  versionLabel: text('version_label').notNull(),
+  activeModel: text('active_model').notNull().default('gemini-4-hydrogen'),
+  temperature: text('temperature').notNull().default('0.2'),
+  safetyMode: text('safety_mode').notNull().default('strict_evidence_grounded'),
+  notes: text('notes').notNull().default(''),
+  isActive: boolean('is_active').notNull().default(true),
+  approvedByAdminId: integer('approved_by_admin_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   investigations: many(investigations),
   paymentSafetyChecks: many(paymentSafetyChecks),
@@ -384,6 +537,13 @@ export const usersRelations = relations(users, ({ many }) => ({
   trustedContacts: many(trustedContacts),
   aiFeedback: many(aiFeedback),
   supportRequests: many(supportRequests),
+  financialTransactions: many(financialTransactions),
+  budgets: many(budgets),
+  portfolioHoldings: many(portfolioHoldings),
+  paperTrades: many(paperTrades),
+  taxCalculations: many(taxCalculations),
+  businessInvoices: many(businessInvoices),
+  businessCashflow: many(businessCashflow),
 }));
 
 export const investigationsRelations = relations(investigations, ({ one, many }) => ({
